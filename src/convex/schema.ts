@@ -72,6 +72,9 @@ const schema = defineSchema(
       qualityGrade: v.string(),
       harvestDate: v.number(),
       expectedPrice: v.number(),
+      // Add optional location and notes captured from the farmer
+      farmLocation: v.optional(v.string()),
+      notes: v.optional(v.string()),
       
       // Current status
       status: batchStatusValidator,

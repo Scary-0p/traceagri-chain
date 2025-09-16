@@ -161,6 +161,8 @@ export default function Dashboard() {
         qualityGrade,
         harvestDate: new Date(harvestDate).getTime(),
         expectedPrice: price,
+        farmLocation: farmLocation || undefined,
+        notes: notes || undefined,
       });
       setSuccessData(result);
       toast("Produce batch successfully listed!");

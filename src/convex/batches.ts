@@ -19,6 +19,9 @@ export const createBatch = mutation({
     qualityGrade: v.string(),
     harvestDate: v.number(),
     expectedPrice: v.number(),
+    // New optional fields from the form
+    farmLocation: v.optional(v.string()),
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -29,7 +32,7 @@ export const createBatch = mutation({
     const batchId = generateBatchId();
     const qrCode = `${process.env.SITE_URL || 'http://localhost:5173'}/trace/${batchId}`;
 
-    const batch = await ctx.db.insert("batches", {
+    await ctx.db.insert("batches", {
       batchId,
       farmerId: user._id,
       cropVariety: args.cropVariety,
@@ -38,12 +41,14 @@ export const createBatch = mutation({
       qualityGrade: args.qualityGrade,
       harvestDate: args.harvestDate,
       expectedPrice: args.expectedPrice,
+      // save optional fields
+      farmLocation: args.farmLocation,
+      notes: args.notes,
       status: BATCH_STATUS.CREATED,
       currentOwnerId: user._id,
       qrCode,
     });
 
-    // Create initial transaction record
     await ctx.db.insert("transactions", {
       batchId,
       fromUserId: user._id,
