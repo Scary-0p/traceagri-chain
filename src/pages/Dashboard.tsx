@@ -58,8 +58,11 @@ export default function Dashboard() {
     return null;
   }
 
+  // Use farmer as the default role for new/guest users
+  const role = user.role ?? "farmer";
+
   const getRoleIcon = () => {
-    switch (user.role) {
+    switch (role) {
       case "farmer":
         return <Package className="h-8 w-8" />;
       case "distributor":
@@ -74,7 +77,7 @@ export default function Dashboard() {
   };
 
   const getRoleTitle = () => {
-    switch (user.role) {
+    switch (role) {
       case "farmer":
         return "Farmer Portal";
       case "distributor":
@@ -89,7 +92,7 @@ export default function Dashboard() {
   };
 
   const getQuickActions = () => {
-    switch (user.role) {
+    switch (role) {
       case "farmer":
         return [
           { label: "Add New Produce", action: () => setOpenCreate(true), primary: true },
@@ -217,16 +220,16 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <CardTitle className="text-2xl">
-                    {user.role === "farmer" && "Manage Your Crops"}
-                    {user.role === "distributor" && "Handle Distribution"}
-                    {user.role === "retailer" && "Manage Retail Operations"}
-                    {user.role === "government" && "Monitor Supply Chain"}
+                    {role === "farmer" && "Manage Your Crops"}
+                    {role === "distributor" && "Handle Distribution"}
+                    {role === "retailer" && "Manage Retail Operations"}
+                    {role === "government" && "Monitor Supply Chain"}
                   </CardTitle>
                   <p className="text-muted-foreground mt-1">
-                    {user.role === "farmer" && "Create batches, track sales, and manage your farm operations"}
-                    {user.role === "distributor" && "Receive, transport, and transfer agricultural products"}
-                    {user.role === "retailer" && "Manage inventory and track product origins"}
-                    {user.role === "government" && "Oversee agricultural supply chain transparency"}
+                    {role === "farmer" && "Create batches, track sales, and manage your farm operations"}
+                    {role === "distributor" && "Receive, transport, and transfer agricultural products"}
+                    {role === "retailer" && "Manage inventory and track product origins"}
+                    {role === "government" && "Oversee agricultural supply chain transparency"}
                   </p>
                 </div>
               </div>
@@ -258,7 +261,7 @@ export default function Dashboard() {
           </div>
 
           {/* Farmer: Create Produce Dialog */}
-          {user.role === "farmer" && (
+          {role === "farmer" && (
             <Dialog open={openCreate} onOpenChange={(o) => {
               setOpenCreate(o);
               if (!o) resetForm();
@@ -386,7 +389,7 @@ export default function Dashboard() {
           )}
 
           {/* Farmer: My Produce History */}
-          {user.role === "farmer" && (
+          {role === "farmer" && (
             <Card id="my-produce-history">
               <CardHeader>
                 <CardTitle>My Produce History</CardTitle>
@@ -440,7 +443,7 @@ export default function Dashboard() {
               <CardTitle>Getting Started</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {user.role === "farmer" && (
+              {role === "farmer" && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
                     1. Create a new crop batch with harvest details
@@ -453,7 +456,7 @@ export default function Dashboard() {
                   </p>
                 </div>
               )}
-              {user.role === "distributor" && (
+              {role === "distributor" && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
                     1. Receive batches from farmers by scanning QR codes
@@ -466,7 +469,7 @@ export default function Dashboard() {
                   </p>
                 </div>
               )}
-              {user.role === "retailer" && (
+              {role === "retailer" && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
                     1. Receive products from distributors
@@ -479,7 +482,7 @@ export default function Dashboard() {
                   </p>
                 </div>
               )}
-              {user.role === "government" && (
+              {role === "government" && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
                     1. Monitor all agricultural transactions in real-time
