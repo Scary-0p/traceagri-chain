@@ -98,8 +98,27 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Lightweight header with Back and Home */}
+      <header className="border-b bg-card">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14">
+            <div className="flex items-center gap-3">
+              <img
+                src="/logo.svg"
+                alt="AgriTrace"
+                className="h-8 w-8 cursor-pointer"
+                onClick={() => navigate("/")}
+              />
+              <span className="text-sm font-medium">Authentication</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => navigate(-1)}>Back</Button>
+              <Button variant="outline" onClick={() => navigate("/")}>Home</Button>
+            </div>
+          </div>
+        </div>
+      </header>
 
-      
       {/* Auth Content */}
       <div className="flex-1 flex items-center justify-center">
         <div className="flex items-center justify-center h-full flex-col">

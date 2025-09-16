@@ -68,7 +68,10 @@ export default function Landing() {
               <img src="/logo.svg" alt="AgriTrace" className="h-8 w-8" />
               <span className="text-xl font-semibold tracking-tight">AgriTrace</span>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" onClick={() => navigate(-1)}>
+                Back
+              </Button>
               {isAuthenticated ? (
                 <Button onClick={() => navigate("/dashboard")}>
                   Go to Dashboard

@@ -33,6 +33,9 @@ export default function Trace() {
               </span>
             </div>
             <div className="flex items-center space-x-2">
+              <Button variant="outline" onClick={() => navigate(-1)}>
+                Back
+              </Button>
               <Button variant="outline" onClick={() => navigate("/")}>
                 Home
               </Button>

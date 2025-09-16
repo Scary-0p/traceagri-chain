@@ -195,10 +195,18 @@ export default function Dashboard() {
                 <p className="text-sm text-muted-foreground">Welcome back, {user.name}</p>
               </div>
             </div>
-            <Button variant="outline" onClick={() => signOut()}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => navigate(-1)}>
+                Back
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/")}>
+                Home
+              </Button>
+              <Button variant="outline" onClick={() => signOut()}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
       </header>
