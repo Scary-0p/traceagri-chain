@@ -54,6 +54,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/trace" element={<Trace />} />
             <Route path="/trace/:batchId" element={<Trace />} />
             <Route path="/retailer" element={<Retailer />} />
             <Route path="*" element={<NotFound />} />
