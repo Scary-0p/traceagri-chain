@@ -75,6 +75,8 @@ const schema = defineSchema(
       // Add optional location and notes captured from the farmer
       farmLocation: v.optional(v.string()),
       notes: v.optional(v.string()),
+      // Add shelf location for retailer storage (optional)
+      shelfLocation: v.optional(v.string()),
       
       // Current status
       status: batchStatusValidator,

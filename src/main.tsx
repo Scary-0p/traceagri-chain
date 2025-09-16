@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound.tsx";
 import "./types/global.d.ts";
 import Dashboard from "@/pages/Dashboard.tsx";
 import Trace from "@/pages/Trace.tsx";
+import Retailer from "@/pages/Retailer.tsx";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
@@ -54,6 +55,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/trace/:batchId" element={<Trace />} />
+            <Route path="/retailer" element={<Retailer />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

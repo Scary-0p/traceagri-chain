@@ -204,6 +204,9 @@ export const updateBatchStatus = mutation({
     batchId: v.string(),
     status: batchStatusValidator,
     retailPrice: v.optional(v.number()),
+    // Allow retailer to update shelf location and notes on status update
+    shelfLocation: v.optional(v.string()),
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -227,9 +230,10 @@ export const updateBatchStatus = mutation({
     await ctx.db.patch(batch._id, {
       status: args.status,
       ...(args.retailPrice && { retailPrice: args.retailPrice }),
+      ...(args.shelfLocation && { shelfLocation: args.shelfLocation }),
+      ...(args.notes && { notes: args.notes }),
     });
 
-    // Record transaction
     await ctx.db.insert("transactions", {
       batchId: args.batchId,
       fromUserId: user._id,
@@ -237,6 +241,9 @@ export const updateBatchStatus = mutation({
       transactionType: "status_update",
       previousStatus: batch.status,
       newStatus: args.status,
+      // include price/notes on the transaction for traceability
+      price: args.retailPrice,
+      notes: args.notes,
       timestamp: Date.now(),
     });
 

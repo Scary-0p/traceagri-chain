@@ -155,7 +155,7 @@ export default function Landing() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => navigate("/auth")}
+                  onClick={() => navigate("/retailer")}
                 >
                   Go to Retailer
                 </Button>
