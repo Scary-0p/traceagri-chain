@@ -117,6 +117,65 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Role Switcher */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            className="text-center mb-6"
+          >
+            <h2 className="text-2xl font-bold tracking-tight">Switch User</h2>
+            <p className="text-muted-foreground mt-2">
+              Jump directly to the experience for Farmers, Retailers, or Consumers.
+            </p>
+          </motion.div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card className="cursor-pointer hover:shadow-md transition-all">
+              <CardContent className="p-4 flex flex-col items-center gap-3">
+                <Package className="h-6 w-6" />
+                <div className="font-semibold">Farmer</div>
+                <Button
+                  className="w-full"
+                  onClick={() => navigate(isAuthenticated ? "/dashboard" : "/auth")}
+                >
+                  Go to Farmer
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-md transition-all">
+              <CardContent className="p-4 flex flex-col items-center gap-3">
+                <Store className="h-6 w-6" />
+                <div className="font-semibold">Retailer</div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate("/auth")}
+                >
+                  Go to Retailer
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-md transition-all">
+              <CardContent className="p-4 flex flex-col items-center gap-3">
+                <Scan className="h-6 w-6" />
+                <div className="font-semibold">Consumer</div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate("/trace")}
+                >
+                  Start Tracing
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
       {/* Stakeholder Portals */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/30">
         <div className="max-w-7xl mx-auto">
