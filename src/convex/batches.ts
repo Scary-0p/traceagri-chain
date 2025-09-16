@@ -157,11 +157,19 @@ export const getUserBatches = query({
 
 // Get batch by ID (for tracing)
 export const getBatchById = query({
-  args: { batchId: v.string() },
+  args: { batchId: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    // If no batchId provided, return null to avoid querying
+    if (!args.batchId) {
+      return null;
+    }
+
+    // Narrow to string for type-safety after guard
+    const id = args.batchId as string;
+
     const batch = await ctx.db
       .query("batches")
-      .withIndex("by_batch_id", (q) => q.eq("batchId", args.batchId))
+      .withIndex("by_batch_id", (q) => q.eq("batchId", id))
       .unique();
 
     if (!batch) {
@@ -174,7 +182,7 @@ export const getBatchById = query({
     // Get transaction history
     const transactions = await ctx.db
       .query("transactions")
-      .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
+      .withIndex("by_batch", (q) => q.eq("batchId", id))
       .collect();
 
     // Get user details for each transaction
