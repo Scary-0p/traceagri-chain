@@ -21,6 +21,25 @@ export default function Dashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [successData, setSuccessData] = useState<{ batchId: string; qrCode: string } | null>(null);
 
+  const [produceType, setProduceType] = useState<string>("");
+  const [cropVariety, setCropVariety] = useState<string>("");
+  const [quantity, setQuantity] = useState<string>("");
+  const [unit, setUnit] = useState<string>("kg");
+  const [qualityGrade, setQualityGrade] = useState<string>("");
+  const [expectedPrice, setExpectedPrice] = useState<string>("");
+  const [harvestDate, setHarvestDate] = useState<string>("");
+  const [farmLocation, setFarmLocation] = useState<string>(""); // initialize empty, sync from user below
+  const [notes, setNotes] = useState<string>("");
+
+  const createBatch = useMutation(api.batches.createBatch);
+  const myBatches = useQuery(api.batches.getUserBatches, {}) ?? [];
+
+  useEffect(() => {
+    if (user?.location && !farmLocation) {
+      setFarmLocation(user.location);
+    }
+  }, [user?.location]);
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       navigate("/auth");
@@ -103,19 +122,6 @@ export default function Dashboard() {
         return [];
     }
   };
-
-  const [produceType, setProduceType] = useState<string>("");
-  const [cropVariety, setCropVariety] = useState<string>("");
-  const [quantity, setQuantity] = useState<string>("");
-  const [unit, setUnit] = useState<string>("kg");
-  const [qualityGrade, setQualityGrade] = useState<string>("");
-  const [expectedPrice, setExpectedPrice] = useState<string>("");
-  const [harvestDate, setHarvestDate] = useState<string>("");
-  const [farmLocation, setFarmLocation] = useState<string>(user?.location || "");
-  const [notes, setNotes] = useState<string>("");
-
-  const createBatch = useMutation(api.batches.createBatch);
-  const myBatches = useQuery(api.batches.getUserBatches, {}) ?? [];
 
   const resetForm = () => {
     setProduceType("");
