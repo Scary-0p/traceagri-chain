@@ -25,7 +25,8 @@ export const createBatch = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    if (!user || user.role !== "farmer") {
+    // Allow users with undefined role (new/guest) to act as farmers by default
+    if (!user || (user.role !== undefined && user.role !== "farmer")) {
       throw new Error("Only farmers can create batches");
     }
 
