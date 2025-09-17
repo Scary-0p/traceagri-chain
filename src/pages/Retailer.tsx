@@ -243,6 +243,8 @@ export default function Retailer() {
                         <th className="py-2 pr-4">Batch ID</th>
                         <th className="py-2 pr-4">Crop</th>
                         <th className="py-2 pr-4">Qty</th>
+                        <th className="py-2 pr-4">Distributor</th>
+                        <th className="py-2 pr-4">Transfer Date</th>
                         <th className="py-2 pr-4">Status</th>
                         <th className="py-2 pr-4">Action</th>
                       </tr>
@@ -254,6 +256,14 @@ export default function Retailer() {
                           <td className="py-2 pr-4">{b.cropVariety}</td>
                           <td className="py-2 pr-4">
                             {b.quantity} {b.unit}
+                          </td>
+                          <td className="py-2 pr-4">
+                            {b.lastTransfer?.fromUserName ?? "-"}
+                          </td>
+                          <td className="py-2 pr-4">
+                            {b.lastTransfer?.timestamp
+                              ? new Date(b.lastTransfer.timestamp).toLocaleString()
+                              : "-"}
                           </td>
                           <td className="py-2 pr-4 capitalize">
                             {String(b.status).replace(/_/g, " ")}

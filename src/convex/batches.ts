@@ -270,7 +270,39 @@ export const getPendingBatchesForRetailer = query({
       .withIndex("by_pending_owner", (q) => q.eq("pendingOwnerId", user._id))
       .collect();
 
-    return pending;
+    // Enrich each pending batch with distributor (sender) name and transfer timestamp (most recent transfer to this retailer)
+    const enriched = await Promise.all(
+      pending.map(async (b) => {
+        const txs = await ctx.db
+          .query("transactions")
+          .withIndex("by_batch", (q) => q.eq("batchId", b.batchId))
+          .collect();
+
+        // Find the latest transfer to this retailer (ideally the distributor -> retailer handoff)
+        const transfersToRetailer = txs
+          .filter((tx) => tx.toUserId === user._id && tx.transactionType === "transfer")
+          .sort((a, z) => z.timestamp - a.timestamp);
+
+        const latest = transfersToRetailer[0];
+        let fromUserName: string | null = null;
+        if (latest) {
+          const fromUser = await ctx.db.get(latest.fromUserId);
+          fromUserName = fromUser?.name ?? fromUser?.email ?? null;
+        }
+
+        return {
+          ...b,
+          lastTransfer: latest
+            ? {
+                timestamp: latest.timestamp,
+                fromUserName,
+              }
+            : null,
+        };
+      })
+    );
+
+    return enriched;
   },
 });
 
