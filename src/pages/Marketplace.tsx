@@ -513,6 +513,15 @@ export default function Marketplace() {
                                   >
                                     Check Price
                                   </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedListingForDetails(listing._id);
+                                      setDetailsOpen(true);
+                                    }}
+                                  >
+                                    View Details
+                                  </Button>
                                 </div>
                               </CardContent>
                             </Card>
@@ -602,6 +611,7 @@ export default function Marketplace() {
                                     <p className="text-sm text-muted-foreground">
                                       Bid: {bid.pricePerUnit.toFixed(2)} per unit
                                       {bid.listing?.farmer && ` • Farmer: ${bid.listing.farmer.name}`}
+                                      {bid.status === "pending" ? " • Pending Farmer Response" : ""}
                                     </p>
                                   </div>
                                   {getStatusBadge(bid.status)}
