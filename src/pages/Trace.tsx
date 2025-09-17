@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 
 export default function Trace() {
   const navigate = useNavigate();
@@ -19,6 +20,10 @@ export default function Trace() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
+
+  // Add modal state for transaction detail view
+  const [detailsOpen, setDetailsOpen] = useState<boolean>(false);
+  const [selectedTx, setSelectedTx] = useState<any | null>(null);
 
   // Helper to parse batch id from QR contents or URL
   const parseBatchId = (raw: string): string | null => {
@@ -34,6 +39,31 @@ export default function Trace() {
     }
     return null;
   };
+
+  // Helpers for role display and icons
+  const roleMeta = (role?: string) => {
+    switch (role) {
+      case "farmer":
+        return { label: "Farmer", icon: "👨‍🌾", color: "bg-green-100 text-green-900 border-green-200" };
+      case "distributor":
+        return { label: "Distributor", icon: "🚚", color: "bg-blue-100 text-blue-900 border-blue-200" };
+      case "retailer":
+        return { label: "Retailer", icon: "🏬", color: "bg-purple-100 text-purple-900 border-purple-200" };
+      case "government":
+        return { label: "Government", icon: "🏛️", color: "bg-amber-100 text-amber-900 border-amber-200" };
+      default:
+        return { label: "User", icon: "👤", color: "bg-muted text-foreground/80 border-border" };
+    }
+  };
+  const safeDisplayName = (name?: string | null, role?: string | null) => {
+    const meta = roleMeta(role || undefined);
+    if (name && name.trim().length > 0) return name;
+    if (role === "farmer") return `${meta.label} (unnamed)`;
+    if (role === "distributor") return `${meta.label} (unnamed)`;
+    if (role === "retailer") return `${meta.label} (unnamed)`;
+    return meta.label;
+  };
+  const formatPrice = (p?: number | null) => (typeof p === "number" ? `₹${p.toFixed(2)}` : "—");
 
   const handleGo = () => {
     const id = enteredId.trim();
@@ -112,6 +142,40 @@ export default function Trace() {
     api.batches.getBatchById,
     batchId ? { batchId } : (undefined as any),
   );
+
+  // Build a sorted timeline from transactions, with safe fallbacks
+  const timeline = (batchId && batch)
+    ? [...batch.transactions]
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .map((tx, idx, arr) => {
+          const prev = idx > 0 ? arr[idx - 1] : null;
+          const priceDelta =
+            typeof tx.price === "number" && prev && typeof prev.price === "number"
+              ? tx.price - prev.price
+              : null;
+          const fromRole = tx.fromUser?.role;
+          const toRole = tx.toUser?.role;
+          const displayRole = toRole || fromRole; // Destination role usually describes step
+          const meta = roleMeta(displayRole);
+          const whoName = tx.toUser
+            ? safeDisplayName(tx.toUser.name, tx.toUser.role)
+            : tx.fromUser
+              ? safeDisplayName(tx.fromUser.name, tx.fromUser.role)
+              : "User";
+          // Status label
+          const statusLabel = String(tx.transactionType === "status_update" ? tx.newStatus : tx.transactionType)
+            .replace(/_/g, " ");
+          return {
+            meta,
+            whoName,
+            when: new Date(tx.timestamp).toLocaleString(),
+            statusLabel,
+            price: tx.price,
+            priceDelta,
+            tx,
+          };
+        })
+    : [];
 
   // Fix loading behavior: when no batchId, not loading
   const loading = batchId ? batch === undefined : false;
@@ -210,86 +274,177 @@ export default function Trace() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <div>
-                        <div className="text-xs text-muted-foreground">Status</div>
-                        <div className="capitalize">
-                          {String(batch.status).replace(/_/g, " ")}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">Crop Variety</div>
-                        <div>{batch.cropVariety}</div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Left: Key batch info */}
+                      <div className="space-y-3">
                         <div>
-                          <div className="text-xs text-muted-foreground">Quantity</div>
-                          <div>
-                            {batch.quantity} {batch.unit}
+                          <div className="text-xs text-muted-foreground">Status</div>
+                          <div className="capitalize">
+                            {String(batch.status).replace(/_/g, " ")}
                           </div>
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground">Expected Price</div>
+                          <div className="text-xs text-muted-foreground">Crop Variety</div>
+                          <div>{batch.cropVariety}</div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
                           <div>
-                            {typeof batch.expectedPrice === "number"
-                              ? batch.expectedPrice.toFixed(2)
-                              : "-"}
+                            <div className="text-xs text-muted-foreground">Quantity</div>
+                            <div>
+                              {batch.quantity} {batch.unit}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground">Expected Price</div>
+                            <div>
+                              {typeof batch.expectedPrice === "number"
+                                ? batch.expectedPrice.toFixed(2)
+                                : "-"}
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Harvest Date</div>
+                          <div>{new Date(batch.harvestDate).toLocaleDateString()}</div>
+                        </div>
+                        {batch.farmLocation ? (
+                          <div>
+                            <div className="text-xs text-muted-foreground">Farm Location</div>
+                            <div>{batch.farmLocation}</div>
+                          </div>
+                        ) : null}
+                        {batch.notes ? (
+                          <div>
+                            <div className="text-xs text-muted-foreground">Notes</div>
+                            <div className="text-sm text-muted-foreground">{batch.notes}</div>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {/* Right: Farmer + QR */}
+                      <div className="space-y-3">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Farmer</div>
+                          <div>
+                            {batch.farmer
+                              ? `${safeDisplayName(batch.farmer.name, "farmer")}${
+                                  batch.farmer.farmName ? " • " + batch.farmer.farmName : ""
+                                }${batch.farmer.location ? " • " + batch.farmer.location : ""}`
+                              : "Farmer"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-2">Trace QR</div>
+                          <div className="flex items-center gap-4">
+                            <img
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                                batch.qrCode,
+                              )}`}
+                              alt="Trace QR"
+                              className="h-40 w-40 border rounded bg-white"
+                            />
+                            <Button
+                              variant="outline"
+                              onClick={() =>
+                                window.open(
+                                  `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(
+                                    batch.qrCode,
+                                  )}`,
+                                  "_blank",
+                                )
+                              }
+                            >
+                              Download QR
+                            </Button>
                           </div>
                         </div>
                       </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">Harvest Date</div>
-                        <div>{new Date(batch.harvestDate).toLocaleDateString()}</div>
-                      </div>
-                      {batch.farmLocation ? (
-                        <div>
-                          <div className="text-xs text-muted-foreground">Farm Location</div>
-                          <div>{batch.farmLocation}</div>
-                        </div>
-                      ) : null}
-                      {batch.notes ? (
-                        <div>
-                          <div className="text-xs text-muted-foreground">Notes</div>
-                          <div className="text-sm text-muted-foreground">{batch.notes}</div>
-                        </div>
-                      ) : null}
                     </div>
 
-                    <div className="space-y-3">
-                      <div>
-                        <div className="text-xs text-muted-foreground">Farmer</div>
-                        <div>
-                          {batch.farmer
-                            ? `${batch.farmer.name}${batch.farmer.farmName ? " • " + batch.farmer.farmName : ""}${batch.farmer.location ? " • " + batch.farmer.location : ""}`
-                            : "-"}
+                    {/* Journey Timeline Visualization */}
+                    <div className="space-y-4">
+                      <h2 className="text-lg font-semibold">Journey</h2>
+                      {timeline.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          No transactions yet.
+                        </p>
+                      ) : (
+                        <div className="relative">
+                          <div className="absolute left-[14px] top-0 bottom-0 w-px bg-border hidden md:block" />
+                          <div className="space-y-4">
+                            {timeline.map((step, idx) => {
+                              const priceClass =
+                                typeof step.price === "number"
+                                  ? step.priceDelta == null
+                                    ? "text-foreground"
+                                    : step.priceDelta >= 0
+                                    ? "text-green-700"
+                                    : "text-red-700"
+                                  : "text-muted-foreground";
+                              return (
+                                <div
+                                  key={step.tx._id}
+                                  className="relative flex gap-3 md:gap-4"
+                                >
+                                  {/* Node dot (only on md+) */}
+                                  <div className="hidden md:flex flex-col items-center">
+                                    <div className={`w-3 h-3 rounded-full bg-primary mt-2`} />
+                                  </div>
+                                  <div
+                                    className={`flex-1 border rounded p-3 md:p-4 bg-card hover:shadow-sm transition cursor-pointer`}
+                                    onClick={() => {
+                                      setSelectedTx(step.tx);
+                                      setDetailsOpen(true);
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-lg" aria-hidden>{step.meta.icon}</span>
+                                        <Badge className={`border ${step.meta.color}`}>
+                                          {step.meta.label}
+                                        </Badge>
+                                        <span className="font-medium">{step.whoName}</span>
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {step.when}
+                                      </div>
+                                    </div>
+                                    <div className="mt-2 text-sm flex flex-wrap items-center gap-3">
+                                      <span className="capitalize">
+                                        {step.statusLabel}
+                                      </span>
+                                      <span className={`font-medium ${priceClass}`}>
+                                        Price: {formatPrice(step.price)}
+                                      </span>
+                                      {typeof step.priceDelta === "number" && (
+                                        <span className={`text-xs ${step.priceDelta >= 0 ? "text-green-700" : "text-red-700"}`}>
+                                          {step.priceDelta >= 0 ? "▲" : "▼"} {formatPrice(Math.abs(step.priceDelta))}
+                                        </span>
+                                      )}
+                                      {step.tx.transportMode && (
+                                        <span className="text-xs text-muted-foreground">
+                                          • Transport: {step.tx.transportMode}
+                                        </span>
+                                      )}
+                                      {step.tx.destination && (
+                                        <span className="text-xs text-muted-foreground">
+                                          • Destination: {step.tx.destination}
+                                        </span>
+                                      )}
+                                      {step.tx.storageInfo && (
+                                        <span className="text-xs text-muted-foreground">
+                                          • Storage: {step.tx.storageInfo}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-2">Trace QR</div>
-                        <div className="flex items-center gap-4">
-                          <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                              batch.qrCode,
-                            )}`}
-                            alt="Trace QR"
-                            className="h-40 w-40 border rounded bg-white"
-                          />
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              window.open(
-                                `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(
-                                  batch.qrCode,
-                                )}`,
-                                "_blank",
-                              )
-                            }
-                          >
-                            Download QR
-                          </Button>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -297,44 +452,87 @@ export default function Trace() {
             </Card>
           )}
 
-          {!loading && batchId && batch && (
-            <Card>
-              <CardContent className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Transaction History</h2>
-                {batch.transactions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No transactions yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {batch.transactions
-                      .sort((a, b) => a.timestamp - b.timestamp)
-                      .map((tx) => (
-                        <div key={tx._id} className="border rounded p-3 text-sm">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="font-medium capitalize">
-                              {tx.transactionType.replace(/_/g, " ")}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(tx.timestamp).toLocaleString()}
-                            </div>
-                          </div>
-                          <div className="mt-1 text-muted-foreground">
-                            {tx.fromUser ? `${tx.fromUser.name} (${tx.fromUser.role})` : "Unknown"} →{" "}
-                            {tx.toUser ? `${tx.toUser.name} (${tx.toUser.role})` : "Unknown"}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            Status:{" "}
-                            <span className="capitalize">
-                              {String(tx.newStatus).replace(/_/g, " ")}
-                            </span>
-                            {typeof tx.price === "number" ? ` • Price: ${tx.price.toFixed(2)}` : ""}
-                            {tx.notes ? ` • Notes: ${tx.notes}` : ""}
-                          </div>
-                        </div>
-                      ))}
+          {/* Modal with full step details */}
+          {selectedTx && (
+            <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+              <DialogContent className="sm:max-w-[520px]">
+                <DialogHeader>
+                  <DialogTitle>Step Details</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium capitalize">
+                      {(selectedTx.transactionType === "status_update"
+                        ? selectedTx.newStatus
+                        : selectedTx.transactionType
+                      ).replace(/_/g, " ")}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(selectedTx.timestamp).toLocaleString()}
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-xs text-muted-foreground">From</div>
+                      <div>
+                        {selectedTx.fromUser
+                          ? `${safeDisplayName(selectedTx.fromUser.name, selectedTx.fromUser.role)} (${roleMeta(selectedTx.fromUser.role).label})`
+                          : "Unknown"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">To</div>
+                      <div>
+                        {selectedTx.toUser
+                          ? `${safeDisplayName(selectedTx.toUser.name, selectedTx.toUser.role)} (${roleMeta(selectedTx.toUser.role).label})`
+                          : "Unknown"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Price</div>
+                      <div>{formatPrice(selectedTx.price)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Status After</div>
+                      <div className="capitalize">
+                        {String(selectedTx.newStatus).replace(/_/g, " ")}
+                      </div>
+                    </div>
+                    {selectedTx.transportMode && (
+                      <div className="md:col-span-1">
+                        <div className="text-xs text-muted-foreground">Transport</div>
+                        <div>{selectedTx.transportMode}</div>
+                      </div>
+                    )}
+                    {selectedTx.destination && (
+                      <div className="md:col-span-1">
+                        <div className="text-xs text-muted-foreground">Destination</div>
+                        <div>{selectedTx.destination}</div>
+                      </div>
+                    )}
+                    {selectedTx.storageInfo && (
+                      <div className="md:col-span-1">
+                        <div className="text-xs text-muted-foreground">Storage</div>
+                        <div>{selectedTx.storageInfo}</div>
+                      </div>
+                    )}
+                    {selectedTx.notes && (
+                      <div className="md:col-span-2">
+                        <div className="text-xs text-muted-foreground">Notes</div>
+                        <div className="text-muted-foreground">{selectedTx.notes}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <Button variant="outline" onClick={() => setDetailsOpen(false)}>
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           )}
         </motion.div>
       </main>
