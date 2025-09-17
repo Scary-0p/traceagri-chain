@@ -59,7 +59,7 @@ export default function Marketplace() {
 
   const priceInsights = useQuery(
     api.marketplace.getPriceInsightsForCrop,
-    insightsCrop ? { cropVariety: insightsCrop } : (undefined as any)
+    insightsCrop ? { cropVariety: insightsCrop } : "skip"
   );
 
   useEffect(() => {

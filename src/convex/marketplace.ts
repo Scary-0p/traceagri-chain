@@ -429,12 +429,27 @@ export const acceptBid = mutation({
 });
 
 export const getPriceInsightsForCrop = query({
-  args: { cropVariety: v.string() },
+  args: { cropVariety: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    // Get all listings for this cropVariety using the new index
+    // If cropVariety isn't provided, return a safe default
+    if (!args.cropVariety) {
+      return {
+        cropVariety: "",
+        averageAcceptedPrice: null,
+        minAcceptedPriceThisWeek: null,
+        maxAcceptedPriceThisWeek: null,
+        recentAccepted: [],
+        totalDeals: 0,
+        dealsThisWeek: 0,
+      };
+    }
+
+    // Narrow the type for TS after the guard
+    const cropVariety: string = args.cropVariety as string;
+
     const listings = await ctx.db
       .query("listings")
-      .withIndex("by_crop_variety", (q) => q.eq("cropVariety", args.cropVariety))
+      .withIndex("by_crop_variety", (q) => q.eq("cropVariety", cropVariety))
       .collect();
 
     // Consider only accepted/closed listings with finalPrice
