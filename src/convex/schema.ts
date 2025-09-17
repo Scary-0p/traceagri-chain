@@ -150,7 +150,8 @@ const schema = defineSchema(
     })
     .index("by_status", ["status"])
     .index("by_farmer", ["farmerId"])
-    .index("by_batch", ["batchId"]),
+    .index("by_batch", ["batchId"])
+    .index("by_crop_variety", ["cropVariety"]),
 
     bids: defineTable({
       listingId: v.id("listings"),

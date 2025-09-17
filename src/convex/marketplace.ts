@@ -427,3 +427,73 @@ export const acceptBid = mutation({
     return { success: true };
   },
 });
+
+export const getPriceInsightsForCrop = query({
+  args: { cropVariety: v.string() },
+  handler: async (ctx, args) => {
+    // Get all listings for this cropVariety using the new index
+    const listings = await ctx.db
+      .query("listings")
+      .withIndex("by_crop_variety", (q) => q.eq("cropVariety", args.cropVariety))
+      .collect();
+
+    // Consider only accepted/closed listings with finalPrice
+    const accepted = listings
+      .filter((l) => (l.status === "locked_in" || l.status === "sold") && typeof l.finalPrice === "number");
+
+    const now = Date.now();
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+    const thisWeek = accepted.filter((l) => (l.acceptedAt ?? 0) >= weekAgo);
+
+    const pricesAll = accepted.map((l) => l.finalPrice as number);
+    const avg =
+      pricesAll.length > 0 ? pricesAll.reduce((a, b) => a + b, 0) / pricesAll.length : null;
+
+    const pricesWeek = thisWeek.map((l) => l.finalPrice as number);
+    const minWeek = pricesWeek.length > 0 ? Math.min(...pricesWeek) : null;
+    const maxWeek = pricesWeek.length > 0 ? Math.max(...pricesWeek) : null;
+
+    // Recent accepted: last 5 by acceptedAt (fallback to _creationTime)
+    const recent = [...accepted]
+      .sort((a, b) => (b.acceptedAt ?? b._creationTime) - (a.acceptedAt ?? a._creationTime))
+      .slice(0, 5);
+
+    // Enrich with farmer and distributor names (from acceptedBidId)
+    const recentEnriched = await Promise.all(
+      recent.map(async (l) => {
+        let distributorName: string | null = null;
+        if (l.acceptedBidId) {
+          const bid = await ctx.db.get(l.acceptedBidId);
+          if (bid) {
+            const distributor = await ctx.db.get(bid.distributorId);
+            distributorName = distributor?.name ?? distributor?.email ?? null;
+          }
+        }
+        const farmer = await ctx.db.get(l.farmerId);
+        const farmerName = farmer?.name ?? farmer?.email ?? null;
+
+        return {
+          listingId: l._id,
+          cropVariety: l.cropVariety,
+          finalPrice: l.finalPrice ?? null,
+          acceptedAt: l.acceptedAt ?? null,
+          farmerName,
+          distributorName,
+          quantity: l.quantity,
+          unit: l.unit,
+        };
+      })
+    );
+
+    return {
+      cropVariety: args.cropVariety,
+      averageAcceptedPrice: avg,
+      minAcceptedPriceThisWeek: minWeek,
+      maxAcceptedPriceThisWeek: maxWeek,
+      recentAccepted: recentEnriched,
+      totalDeals: accepted.length,
+      dealsThisWeek: thisWeek.length,
+    };
+  },
+});

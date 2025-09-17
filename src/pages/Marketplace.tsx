@@ -15,6 +15,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Package, Truck, Store, DollarSign, MapPin, Calendar } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
+import { Separator } from "@/components/ui/separator";
 
 export default function Marketplace() {
   const { isLoading, isAuthenticated, user } = useAuth();
@@ -51,6 +52,15 @@ export default function Marketplace() {
   const createListing = useMutation(api.marketplace.createListing);
   const placeBid = useMutation(api.marketplace.placeBid);
   const acceptBid = useMutation(api.marketplace.acceptBid);
+
+  // New: price insights dialog state
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [insightsCrop, setInsightsCrop] = useState<string | null>(null);
+
+  const priceInsights = useQuery(
+    api.marketplace.getPriceInsightsForCrop,
+    insightsCrop ? { cropVariety: insightsCrop } : (undefined as any)
+  );
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -178,6 +188,13 @@ export default function Marketplace() {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+
+  // Helper: split lists
+  const farmerActiveListings = (myListings ?? []).filter((l) => l.status === "open");
+  const farmerHistoryListings = (myListings ?? []).filter((l) => l.status !== "open");
+
+  const distributorActiveBids = (myBids ?? []).filter((b) => b.status === "pending");
+  const distributorHistoryBids = (myBids ?? []).filter((b) => b.status !== "pending");
 
   return (
     <div className="min-h-screen bg-background">
@@ -407,44 +424,100 @@ export default function Marketplace() {
                   <CardHeader>
                     <CardTitle>My Listings</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    {!myListings || myListings.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No listings yet. Create your first listing.
-                      </p>
-                    ) : (
-                      <div className="space-y-4">
-                        {myListings.map((listing) => (
-                          <Card key={listing._id} className="border-l-4 border-l-primary">
-                            <CardContent className="p-4">
-                              <div className="flex justify-between items-start mb-3">
-                                <div>
-                                  <h3 className="font-medium">{listing.cropVariety}</h3>
-                                  <p className="text-sm text-muted-foreground">
-                                    {listing.quantity} {listing.unit} at {listing.expectedPrice.toFixed(2)} per unit
-                                  </p>
-                                </div>
-                                {getStatusBadge(listing.status)}
-                              </div>
-
-                              {listing.acceptedBid && (
-                                <div className="mt-3 p-3 bg-green-50 rounded-md">
-                                  <p className="text-sm font-medium text-green-800">
-                                    Order Confirmed
-                                  </p>
-                                  <p className="text-sm text-green-700">
-                                    Accepted bid: {listing.finalPrice?.toFixed(2)} per unit
-                                    {listing.acceptedBid.distributor && 
-                                      ` from ${listing.acceptedBid.distributor.name}`
-                                    }
-                                  </p>
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
+                  <CardContent className="space-y-6">
+                    {/* Active Listings */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-medium">Active Listings</h3>
+                        <span className="text-xs text-muted-foreground">{farmerActiveListings.length} item(s)</span>
                       </div>
-                    )}
+                      {farmerActiveListings.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          No active listings. Create your first listing.
+                        </p>
+                      ) : (
+                        <div className="space-y-4">
+                          {farmerActiveListings.map((listing) => (
+                            <Card key={listing._id} className="border-l-4 border-l-primary">
+                              <CardContent className="p-4">
+                                <div className="flex justify-between items-start mb-3">
+                                  <div>
+                                    <h3 className="font-medium">{listing.cropVariety}</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                      {listing.quantity} {listing.unit} at {listing.expectedPrice.toFixed(2)} per unit
+                                    </p>
+                                  </div>
+                                  {getStatusBadge(listing.status)}
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setInsightsCrop(listing.cropVariety);
+                                      setInsightsOpen(true);
+                                    }}
+                                  >
+                                    Check Price
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <Separator />
+
+                    {/* History (Sold/Locked) */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-medium">History (Sold / Locked)</h3>
+                        <span className="text-xs text-muted-foreground">{farmerHistoryListings.length} item(s)</span>
+                      </div>
+                      {farmerHistoryListings.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No past orders yet.</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {farmerHistoryListings
+                            .sort((a, b) => (b.acceptedAt ?? 0) - (a.acceptedAt ?? 0))
+                            .map((listing) => (
+                              <Card key={listing._id} className="border-l-4 border-l-green-500">
+                                <CardContent className="p-4">
+                                  <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                      <h3 className="font-medium">{listing.cropVariety}</h3>
+                                      <p className="text-sm text-muted-foreground">
+                                        {listing.quantity} {listing.unit} •{" "}
+                                        {listing.acceptedBid
+                                          ? `Sold at ${listing.finalPrice?.toFixed(2)} per unit`
+                                          : "Locked"}
+                                        {listing.acceptedAt
+                                          ? ` • ${new Date(listing.acceptedAt).toLocaleDateString()}`
+                                          : ""}
+                                      </p>
+                                    </div>
+                                    {getStatusBadge(listing.status)}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setInsightsCrop(listing.cropVariety);
+                                        setInsightsOpen(true);
+                                      }}
+                                    >
+                                      Check Price
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               ) : (
@@ -452,41 +525,82 @@ export default function Marketplace() {
                   <CardHeader>
                     <CardTitle>My Bids</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    {!myBids || myBids.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No bids placed yet. Browse produce to place your first bid.
-                      </p>
-                    ) : (
-                      <div className="space-y-4">
-                        {myBids.map((bid) => (
-                          <Card key={bid._id} className="border-l-4 border-l-blue-500">
-                            <CardContent className="p-4">
-                              <div className="flex justify-between items-start mb-3">
-                                <div>
-                                  <h3 className="font-medium">
-                                    {bid.listing?.cropVariety || "Unknown Crop"}
-                                  </h3>
-                                  <p className="text-sm text-muted-foreground">
-                                    Bid: {bid.pricePerUnit.toFixed(2)} per unit
-                                    {bid.listing?.farmer && 
-                                      ` • Farmer: ${bid.listing.farmer.name}`
-                                    }
-                                  </p>
-                                </div>
-                                {getStatusBadge(bid.status)}
-                              </div>
-
-                              {bid.comments && (
-                                <p className="text-sm text-muted-foreground">
-                                  "{bid.comments}"
-                                </p>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
+                  <CardContent className="space-y-6">
+                    {/* Active Bids */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-medium">Active Bids</h3>
+                        <span className="text-xs text-muted-foreground">{distributorActiveBids.length} item(s)</span>
                       </div>
-                    )}
+                      {distributorActiveBids.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          No active bids. Browse produce to place a bid.
+                        </p>
+                      ) : (
+                        <div className="space-y-4">
+                          {distributorActiveBids.map((bid) => (
+                            <Card key={bid._id} className="border-l-4 border-l-blue-500">
+                              <CardContent className="p-4">
+                                <div className="flex justify-between items-start mb-3">
+                                  <div>
+                                    <h3 className="font-medium">
+                                      {bid.listing?.cropVariety || "Unknown Crop"}
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground">
+                                      Bid: {bid.pricePerUnit.toFixed(2)} per unit
+                                      {bid.listing?.farmer && ` • Farmer: ${bid.listing.farmer.name}`}
+                                    </p>
+                                  </div>
+                                  {getStatusBadge(bid.status)}
+                                </div>
+                                {bid.comments && (
+                                  <p className="text-sm text-muted-foreground">"{bid.comments}"</p>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <Separator />
+
+                    {/* History */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-medium">History</h3>
+                        <span className="text-xs text-muted-foreground">{distributorHistoryBids.length} item(s)</span>
+                      </div>
+                      {distributorHistoryBids.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No past bids yet.</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {distributorHistoryBids
+                            .sort((a, b) => b.timestamp - a.timestamp)
+                            .map((bid) => (
+                              <Card key={bid._id} className="border-l-4 border-l-green-600">
+                                <CardContent className="p-4">
+                                  <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                      <h3 className="font-medium">
+                                        {bid.listing?.cropVariety || "Unknown Crop"}
+                                      </h3>
+                                      <p className="text-sm text-muted-foreground">
+                                        Bid: {bid.pricePerUnit.toFixed(2)} per unit
+                                        {bid.listing?.farmer && ` • Farmer: ${bid.listing.farmer.name}`}
+                                      </p>
+                                    </div>
+                                    {getStatusBadge(bid.status)}
+                                  </div>
+                                  {bid.comments && (
+                                    <p className="text-sm text-muted-foreground">"{bid.comments}"</p>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            ))}
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -572,6 +686,90 @@ export default function Marketplace() {
             </Button>
             <Button onClick={handlePlaceBid}>
               Place Bid
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Insights Dialog */}
+      <Dialog open={insightsOpen} onOpenChange={(o) => { setInsightsOpen(o); if (!o) setInsightsCrop(null); }}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>
+              {insightsCrop ? `Price Insights • ${insightsCrop}` : "Price Insights"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {!insightsCrop || !priceInsights ? (
+              <div className="text-sm text-muted-foreground">Loading...</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <Card>
+                    <CardContent className="p-3">
+                      <div className="text-xs text-muted-foreground">Average Accepted</div>
+                      <div className="text-lg font-semibold">
+                        {priceInsights.averageAcceptedPrice != null
+                          ? priceInsights.averageAcceptedPrice.toFixed(2)
+                          : "—"}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-3">
+                      <div className="text-xs text-muted-foreground">Min (7d)</div>
+                      <div className="text-lg font-semibold">
+                        {priceInsights.minAcceptedPriceThisWeek != null
+                          ? priceInsights.minAcceptedPriceThisWeek.toFixed(2)
+                          : "—"}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-3">
+                      <div className="text-xs text-muted-foreground">Max (7d)</div>
+                      <div className="text-lg font-semibold">
+                        {priceInsights.maxAcceptedPriceThisWeek != null
+                          ? priceInsights.maxAcceptedPriceThisWeek.toFixed(2)
+                          : "—"}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div>
+                  <div className="text-sm font-medium mb-2">Recent Accepted Deals</div>
+                  {priceInsights.recentAccepted.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No recent accepted deals.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {priceInsights.recentAccepted.map((r: any) => (
+                        <div key={String(r.listingId)} className="rounded-md border p-3 text-sm">
+                          <div className="flex justify-between">
+                            <div>
+                              <div className="font-medium">{r.cropVariety}</div>
+                              <div className="text-muted-foreground text-xs">
+                                {r.quantity} {r.unit} • {r.farmerName || "Farmer"} → {r.distributorName || "Distributor"}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold">{typeof r.finalPrice === "number" ? r.finalPrice.toFixed(2) : "—"}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {r.acceptedAt ? new Date(r.acceptedAt).toLocaleDateString() : ""}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setInsightsOpen(false); setInsightsCrop(null); }}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
