@@ -153,3 +153,70 @@ export const addTestRetailers = mutation({
     return { insertedCount: inserted.length, inserted };
   },
 });
+
+export const addSampleListingForMyLatestBatch = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    if (!identity.email) throw new Error("No email associated with this account");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", identity.email as string))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    // Get user's latest batch
+    const latestBatch = await ctx.db
+      .query("batches")
+      .withIndex("by_farmer", (q) => q.eq("farmerId", user._id))
+      .order("desc")
+      .first();
+
+    if (!latestBatch) {
+      throw new Error("No batches found. Create a batch first.");
+    }
+
+    // Check for existing listing
+    const existingListing = await ctx.db
+      .query("listings")
+      .withIndex("by_batch", (q) => q.eq("batchId", latestBatch.batchId))
+      .filter((q) => q.eq(q.field("status"), "open"))
+      .first();
+
+    if (existingListing) {
+      return { message: "Batch already has an open listing", listingId: existingListing._id };
+    }
+
+    // Create sample listing
+    const listingId = await ctx.db.insert("listings", {
+      batchId: latestBatch.batchId,
+      farmerId: user._id,
+      quantity: latestBatch.quantity,
+      unit: latestBatch.unit,
+      expectedPrice: latestBatch.expectedPrice || 5.0,
+      negotiationAllowed: true,
+      specialTerms: "Sample listing for testing",
+      description: "This is a test listing created automatically",
+      status: "open",
+      location: user.location,
+      cropVariety: latestBatch.cropVariety,
+    });
+
+    // Add transaction (use valid statuses)
+    await ctx.db.insert("transactions", {
+      batchId: latestBatch.batchId,
+      fromUserId: user._id,
+      toUserId: user._id,
+      transactionType: "listing_created",
+      timestamp: Date.now(),
+      price: latestBatch.expectedPrice || 5.0,
+      previousStatus: latestBatch.status,
+      newStatus: latestBatch.status,
+      notes: "Sample listing created for testing",
+    });
+
+    return { listingId, message: "Sample listing created successfully" };
+  },
+});

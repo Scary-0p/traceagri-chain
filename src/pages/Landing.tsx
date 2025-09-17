@@ -333,27 +333,26 @@ export default function Landing() {
       </section>
 
       {/* Consumer Trace Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/30">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-          >
-            <h2 className="text-3xl font-bold tracking-tight mb-4">
-              For Consumers
-            </h2>
-            <p className="text-xl text-muted-foreground mb-8">
-              Scan any QR code on agricultural products to see their complete journey, 
-              verify authenticity, and check quality certifications.
-            </p>
-            <Button size="lg" onClick={() => navigate("/trace")}>
-              <Scan className="h-4 w-4 mr-2" />
+      <Card>
+        <CardContent className="p-8 text-center">
+          <h2 className="text-2xl font-bold mb-4">For Consumers</h2>
+          <p className="text-muted-foreground mb-6">
+            Trace any product to see its complete journey from farm to table
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Button onClick={() => navigate("/trace")} size="lg">
               Start Tracing
             </Button>
-          </motion.div>
-        </div>
-      </section>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/marketplace")} 
+              size="lg"
+            >
+              Browse Marketplace
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Footer */}
       <footer className="border-t py-8 px-4 sm:px-6 lg:px-8">

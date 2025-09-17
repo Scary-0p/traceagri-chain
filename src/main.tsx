@@ -15,10 +15,11 @@ import Dashboard from "@/pages/Dashboard.tsx";
 import Trace from "@/pages/Trace.tsx";
 import Retailer from "@/pages/Retailer.tsx";
 import Distributor from "@/pages/Distributor.tsx";
+import Marketplace from "@/pages/Marketplace.tsx";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
-
+/** Removed unused createBrowserRouter() setup since we use <BrowserRouter> + <Routes> below */
 
 function RouteSyncer() {
   const location = useLocation();
@@ -61,6 +62,8 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/distributor" element={<Distributor />} />
             {/* Add distributor-dashboard alias for robust distributor landing */}
             <Route path="/distributor-dashboard" element={<Distributor />} />
+            {/* Added Marketplace route */}
+            <Route path="/marketplace" element={<Marketplace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

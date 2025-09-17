@@ -130,6 +130,42 @@ const schema = defineSchema(
     })
     .index("by_batch", ["batchId"])
     .index("by_updated_by", ["updatedBy"]),
+
+    listings: defineTable({
+      batchId: v.string(),
+      farmerId: v.id("users"),
+      quantity: v.number(),
+      unit: v.string(),
+      expectedPrice: v.number(),
+      negotiationAllowed: v.optional(v.boolean()),
+      specialTerms: v.optional(v.string()),
+      description: v.optional(v.string()),
+      images: v.optional(v.array(v.string())),
+      status: v.union(v.literal("open"), v.literal("locked_in"), v.literal("sold")),
+      acceptedBidId: v.optional(v.id("bids")),
+      acceptedAt: v.optional(v.number()),
+      finalPrice: v.optional(v.number()),
+      location: v.optional(v.string()),
+      cropVariety: v.string(),
+    })
+    .index("by_status", ["status"])
+    .index("by_farmer", ["farmerId"])
+    .index("by_batch", ["batchId"]),
+
+    bids: defineTable({
+      listingId: v.id("listings"),
+      distributorId: v.id("users"),
+      pricePerUnit: v.number(),
+      minQuantity: v.optional(v.number()),
+      maxQuantity: v.optional(v.number()),
+      pickupProposal: v.optional(v.string()),
+      paymentTerms: v.optional(v.string()),
+      comments: v.optional(v.string()),
+      status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("rejected")),
+      timestamp: v.number(),
+    })
+    .index("by_listing", ["listingId"])
+    .index("by_distributor", ["distributorId"]),
   },
   {
     schemaValidation: false,

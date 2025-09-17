@@ -17,6 +17,7 @@ import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as auth from "../auth.js";
 import type * as batches from "../batches.js";
 import type * as http from "../http.js";
+import type * as marketplace from "../marketplace.js";
 import type * as testData from "../testData.js";
 import type * as users from "../users.js";
 
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   batches: typeof batches;
   http: typeof http;
+  marketplace: typeof marketplace;
   testData: typeof testData;
   users: typeof users;
 }>;
