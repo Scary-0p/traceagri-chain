@@ -59,6 +59,31 @@ export const createBatch = mutation({
       timestamp: Date.now(),
     });
 
+    // Auto-create a marketplace listing for this batch so it shows in Browse Produce
+    const listingId = await ctx.db.insert("listings", {
+      batchId,
+      farmerId: user._id,
+      quantity: args.quantity,
+      unit: args.unit,
+      expectedPrice: args.expectedPrice,
+      status: "open",
+      location: user.location,
+      cropVariety: args.cropVariety,
+    });
+
+    // Log a listing_created transaction while keeping status aligned with the batch
+    await ctx.db.insert("transactions", {
+      batchId,
+      fromUserId: user._id,
+      toUserId: user._id,
+      transactionType: "listing_created",
+      timestamp: Date.now(),
+      price: args.expectedPrice,
+      previousStatus: BATCH_STATUS.CREATED,
+      newStatus: BATCH_STATUS.CREATED,
+      notes: `Listed in marketplace: ${args.quantity} ${args.unit} at ${args.expectedPrice} per unit`,
+    });
+
     return { batchId, qrCode };
   },
 });
