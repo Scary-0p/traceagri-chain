@@ -59,6 +59,8 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/trace/:batchId" element={<Trace />} />
             <Route path="/retailer" element={<Retailer />} />
             <Route path="/distributor" element={<Distributor />} />
+            {/* Add distributor-dashboard alias for robust distributor landing */}
+            <Route path="/distributor-dashboard" element={<Distributor />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

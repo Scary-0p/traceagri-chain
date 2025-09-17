@@ -31,12 +31,42 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Add: helper to compute redirect path based on role preference
+  const getRedirectAfterSignIn = () => {
+    // Try reading role from localStorage or from ?role= query param
+    let preferredRole = localStorage.getItem("preferredRole") || null;
+    try {
+      const url = new URL(window.location.href);
+      const roleParam = url.searchParams.get("role");
+      if (roleParam) preferredRole = roleParam;
+    } catch {
+      // ignore URL parsing issues
+    }
+
+    switch (preferredRole) {
+      case "farmer":
+        return "/dashboard";
+      case "distributor":
+        return "/distributor-dashboard";
+      case "retailer":
+        return "/retailer";
+      case "government":
+        return "/dashboard";
+      case "consumer":
+        return "/trace";
+      default:
+        // Fallback to provided redirect or dashboard
+        return redirectAfterAuth || "/dashboard";
+    }
+  };
+
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
       const redirect = redirectAfterAuth || "/";
       navigate(redirect);
     }
   }, [authLoading, isAuthenticated, navigate, redirectAfterAuth]);
+
   const handleEmailSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
@@ -67,7 +97,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
       console.log("signed in");
 
-      const redirect = redirectAfterAuth || "/";
+      // Use role-based redirect if available
+      const redirect = getRedirectAfterSignIn();
       navigate(redirect);
     } catch (error) {
       console.error("OTP verification error:", error);
@@ -86,7 +117,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       console.log("Attempting anonymous sign in...");
       await signIn("anonymous");
       console.log("Anonymous sign in successful");
-      const redirect = redirectAfterAuth || "/";
+      // Use role-based redirect if available
+      const redirect = getRedirectAfterSignIn();
       navigate(redirect);
     } catch (error) {
       console.error("Guest login error:", error);
