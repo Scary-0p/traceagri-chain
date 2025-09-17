@@ -106,6 +106,10 @@ const schema = defineSchema(
       price: v.optional(v.number()),
       notes: v.optional(v.string()),
       timestamp: v.number(),
+      // Add optional logistics fields for distributor events
+      transportMode: v.optional(v.string()),
+      storageInfo: v.optional(v.string()),
+      destination: v.optional(v.string()),
     })
     .index("by_batch", ["batchId"])
     .index("by_from_user", ["fromUserId"])

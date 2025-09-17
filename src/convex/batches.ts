@@ -133,6 +133,71 @@ export const transferBatch = mutation({
   },
 });
 
+// Add a distributor-initiated acceptance mutation (farmer -> distributor)
+export const acceptBatchFromFarmer = mutation({
+  args: {
+    batchId: v.string(),
+    price: v.optional(v.number()),
+    transportMode: v.optional(v.string()),
+    storageInfo: v.optional(v.string()),
+    destination: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new Error("Authentication required");
+    }
+    if (user.role !== "distributor") {
+      throw new Error("Only distributors can accept batches");
+    }
+
+    const batch = await ctx.db
+      .query("batches")
+      .withIndex("by_batch_id", (q) => q.eq("batchId", args.batchId))
+      .unique();
+
+    if (!batch) {
+      throw new Error("Batch not found");
+    }
+
+    // Ensure the current owner is a farmer
+    const currentOwner = await ctx.db.get(batch.currentOwnerId);
+    if (!currentOwner) {
+      throw new Error("Current owner not found");
+    }
+    if (currentOwner.role !== "farmer") {
+      throw new Error("Batch can only be accepted from a farmer");
+    }
+
+    // Update batch: distributor takes ownership
+    await ctx.db.patch(batch._id, {
+      status: BATCH_STATUS.WITH_DISTRIBUTOR,
+      currentOwnerId: user._id,
+      ...(args.price && { farmerPrice: args.price }),
+      // keep other fields as-is
+    });
+
+    // Record transaction (collection/transfer)
+    await ctx.db.insert("transactions", {
+      batchId: args.batchId,
+      fromUserId: currentOwner._id,
+      toUserId: user._id,
+      transactionType: "transfer",
+      previousStatus: batch.status,
+      newStatus: BATCH_STATUS.WITH_DISTRIBUTOR,
+      price: args.price,
+      notes: args.notes,
+      timestamp: Date.now(),
+      transportMode: args.transportMode,
+      storageInfo: args.storageInfo,
+      destination: args.destination,
+    });
+
+    return { success: true };
+  },
+});
+
 // Get batches for current user
 export const getUserBatches = query({
   args: {},

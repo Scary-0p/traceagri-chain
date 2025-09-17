@@ -14,6 +14,7 @@ import "./types/global.d.ts";
 import Dashboard from "@/pages/Dashboard.tsx";
 import Trace from "@/pages/Trace.tsx";
 import Retailer from "@/pages/Retailer.tsx";
+import Distributor from "@/pages/Distributor.tsx";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
@@ -57,6 +58,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/trace" element={<Trace />} />
             <Route path="/trace/:batchId" element={<Trace />} />
             <Route path="/retailer" element={<Retailer />} />
+            <Route path="/distributor" element={<Distributor />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
