@@ -116,3 +116,40 @@ export const seedTestData = mutation({
     };
   },
 });
+
+export const addTestRetailers = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Simple helper to avoid duplicate emails if re-run
+    const existing = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("role"), "retailer"))
+      .collect();
+
+    const existingEmails = new Set(existing.map((u) => u.email));
+
+    const samples = [
+      { name: "Retailer Alpha", email: "retailer.alpha@test.com", location: "San Jose, CA", phone: "+1-555-1111", licenseNumber: "RET-2024-ALPHA" },
+      { name: "Retailer Beta", email: "retailer.beta@test.com", location: "Oakland, CA", phone: "+1-555-2222", licenseNumber: "RET-2024-BETA" },
+      { name: "Retailer Gamma", email: "retailer.gamma@test.com", location: "Palo Alto, CA", phone: "+1-555-3333", licenseNumber: "RET-2024-GAMMA" },
+    ];
+
+    const inserted: Array<string> = [];
+
+    for (const s of samples) {
+      if (existingEmails.has(s.email)) continue;
+      await ctx.db.insert("users", {
+        name: s.name,
+        email: s.email,
+        role: "retailer",
+        location: s.location,
+        phone: s.phone,
+        licenseNumber: s.licenseNumber,
+        verified: true,
+      });
+      inserted.push(s.email);
+    }
+
+    return { insertedCount: inserted.length, inserted };
+  },
+});

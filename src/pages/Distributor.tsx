@@ -24,6 +24,7 @@ export default function Distributor() {
 
   const acceptFromFarmer = useMutation(api.batches.acceptBatchFromFarmer);
   const transferToRetailer = useMutation(api.batches.transferBatch);
+  const addRetailers = useMutation(api.testData.addTestRetailers);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -429,6 +430,27 @@ export default function Distributor() {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {/* Add test data helper */}
+                            {(retailers?.length ?? 0) === 0 && (
+                              <div className="mt-2 flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await addRetailers({});
+                                      toast(res.insertedCount > 0 ? `Added ${res.insertedCount} test retailers.` : "No new retailers added.");
+                                    } catch (e) {
+                                      console.error(e);
+                                      toast("Failed to add test retailers.");
+                                    }
+                                  }}
+                                >
+                                  Add Sample Retailers
+                                </Button>
+                                <span className="text-xs text-muted-foreground">Populate a few retailers for testing.</span>
+                              </div>
+                            )}
                           </div>
                           <div>
                             <Label>Transfer Price (optional)</Label>
