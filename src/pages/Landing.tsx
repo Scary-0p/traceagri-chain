@@ -190,10 +190,19 @@ export default function Landing() {
                   className="w-full"
                   onClick={() => {
                     localStorage.setItem("preferredRole", "retailer");
-                    navigate("/retailer");
+                    navigate(isAuthenticated ? "/retailer" : "/auth?role=retailer");
                   }}
                 >
                   Go to Retailer
+                </Button>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    localStorage.setItem("preferredRole", "retailer");
+                    navigate("/auth?role=retailer");
+                  }}
+                >
+                  Test as Guest (Retailer)
                 </Button>
               </CardContent>
             </Card>
