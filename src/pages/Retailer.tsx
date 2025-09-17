@@ -23,8 +23,9 @@ export default function Retailer() {
     api.batches.getBatchById,
     queryId ? { batchId: queryId } : (undefined as any),
   );
-
-  const updateStatus = useMutation(api.batches.updateBatchStatus);
+  const pendingBatches = useQuery(api.batches.getPendingBatchesForRetailer, {}); // NEW
+  const acceptPending = useMutation(api.batches.retailerAcceptBatch); // NEW
+  const updateStatus = useMutation(api.batches.updateBatchStatus); // ADD: wire retailer update
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -36,7 +37,7 @@ export default function Retailer() {
 
   const canEdit = useMemo(() => {
     if (!user || !batch) return false;
-    // Only allow edit if current user owns the batch (already transferred to retailer)
+    // Only allow edit if current user owns the batch (already accepted)
     return String(batch.currentOwnerId) === String(user._id);
   }, [user, batch]);
 
@@ -165,6 +166,17 @@ export default function Retailer() {
     }
   };
 
+  const handleClaim = async (id: string) => {
+    try {
+      await acceptPending({ batchId: id });
+      toast("You now own this batch and can update its info.");
+      setQueryId(id);
+    } catch (e) {
+      console.error(e);
+      toast("Failed to accept batch. Ensure it is assigned to you.");
+    }
+  };
+
   if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -213,6 +225,65 @@ export default function Retailer() {
           transition={{ duration: 0.45 }}
           className="space-y-8"
         >
+          {/* Pending Batches to Accept */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Batches</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!pendingBatches || pendingBatches.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No pending transfers. Ask your distributor to assign a batch to you.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-left text-muted-foreground">
+                      <tr className="border-b">
+                        <th className="py-2 pr-4">Batch ID</th>
+                        <th className="py-2 pr-4">Crop</th>
+                        <th className="py-2 pr-4">Qty</th>
+                        <th className="py-2 pr-4">Status</th>
+                        <th className="py-2 pr-4">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingBatches.map((b) => (
+                        <tr key={String(b._id)} className="border-b last:border-0">
+                          <td className="py-2 pr-4 font-mono">{b.batchId}</td>
+                          <td className="py-2 pr-4">{b.cropVariety}</td>
+                          <td className="py-2 pr-4">
+                            {b.quantity} {b.unit}
+                          </td>
+                          <td className="py-2 pr-4 capitalize">
+                            {String(b.status).replace(/_/g, " ")}
+                          </td>
+                          <td className="py-2 pr-4">
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setEnteredId(b.batchId);
+                                  setQueryId(b.batchId);
+                                }}
+                                variant="outline"
+                              >
+                                View
+                              </Button>
+                              <Button size="sm" onClick={() => handleClaim(b.batchId)}>
+                                Accept
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Quick Tiles */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
@@ -328,6 +399,23 @@ export default function Retailer() {
                   </div>
 
                   <div className="space-y-4">
+                    {/* Claim banner if pending for this retailer */}
+                    {String(batch.status) === "in_transit_to_retailer" &&
+                      batch.pendingOwnerId &&
+                      String(batch.pendingOwnerId) === String(user._id) && (
+                        <div className="rounded-md border p-3 bg-amber-50 text-amber-900">
+                          <div className="text-sm font-medium">Pending Acceptance</div>
+                          <div className="text-xs mt-1">
+                            This batch is assigned to you but awaits your acceptance.
+                          </div>
+                          <div className="mt-2">
+                            <Button size="sm" onClick={() => handleClaim(batch.batchId)}>
+                              Accept This Batch
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
                     <div>
                       <div className="text-xs text-muted-foreground mb-2">Trace QR</div>
                       <div className="flex items-center gap-4">

@@ -77,6 +77,8 @@ const schema = defineSchema(
       notes: v.optional(v.string()),
       // Add shelf location for retailer storage (optional)
       shelfLocation: v.optional(v.string()),
+      // Intended recipient for retailer acceptance
+      pendingOwnerId: v.optional(v.id("users")),
       
       // Current status
       status: batchStatusValidator,
@@ -93,7 +95,8 @@ const schema = defineSchema(
     .index("by_batch_id", ["batchId"])
     .index("by_farmer", ["farmerId"])
     .index("by_current_owner", ["currentOwnerId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_pending_owner", ["pendingOwnerId"]),
 
     // Transaction history for full traceability
     transactions: defineTable({

@@ -102,7 +102,8 @@ export const transferBatch = mutation({
         newStatus = BATCH_STATUS.WITH_DISTRIBUTOR;
         break;
       case "retailer":
-        newStatus = BATCH_STATUS.WITH_RETAILER;
+        // Set to in transit to retailer and mark pendingOwnerId instead of switching owner immediately
+        newStatus = BATCH_STATUS.IN_TRANSIT_TO_RETAILER;
         break;
       default:
         throw new Error("Invalid recipient role");
@@ -111,9 +112,12 @@ export const transferBatch = mutation({
     // Update batch
     await ctx.db.patch(batch._id, {
       status: newStatus,
-      currentOwnerId: args.toUserId,
+      // Only move ownership immediately for distributor
+      ...(toUser.role === "distributor" && { currentOwnerId: args.toUserId }),
       ...(args.price && toUser.role === "distributor" && { farmerPrice: args.price }),
       ...(args.price && toUser.role === "retailer" && { distributorPrice: args.price }),
+      // For retailer transfer, store intended recipient
+      ...(toUser.role === "retailer" && { pendingOwnerId: args.toUserId }),
     });
 
     // Record transaction
@@ -195,6 +199,78 @@ export const acceptBatchFromFarmer = mutation({
     });
 
     return { success: true };
+  },
+});
+
+// Retailer accepts/claims a pending transfer
+export const retailerAcceptBatch = mutation({
+  args: {
+    batchId: v.string(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new Error("Authentication required");
+    }
+    if (user.role !== "retailer") {
+      throw new Error("Only retailers can accept batches");
+    }
+
+    const batch = await ctx.db
+      .query("batches")
+      .withIndex("by_batch_id", (q) => q.eq("batchId", args.batchId))
+      .unique();
+
+    if (!batch) {
+      throw new Error("Batch not found");
+    }
+
+    // Retailer can accept only if intended pendingOwnerId is them,
+    // or already currentOwner is them (idempotent acceptance)
+    const isIntended = batch.pendingOwnerId === user._id;
+    const alreadyOwner = batch.currentOwnerId === user._id;
+
+    if (!isIntended && !alreadyOwner) {
+      throw new Error("This batch is not assigned to you");
+    }
+
+    await ctx.db.patch(batch._id, {
+      status: BATCH_STATUS.WITH_RETAILER,
+      currentOwnerId: user._id,
+      pendingOwnerId: undefined,
+    });
+
+    await ctx.db.insert("transactions", {
+      batchId: args.batchId,
+      fromUserId: user._id,
+      toUserId: user._id,
+      transactionType: "status_update",
+      previousStatus: batch.status,
+      newStatus: BATCH_STATUS.WITH_RETAILER,
+      notes: args.notes,
+      timestamp: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// List pending batches for retailer
+export const getPendingBatchesForRetailer = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || user.role !== "retailer") {
+      return [];
+    }
+    // Batches awaiting this retailer's acceptance
+    const pending = await ctx.db
+      .query("batches")
+      .withIndex("by_pending_owner", (q) => q.eq("pendingOwnerId", user._id))
+      .collect();
+
+    return pending;
   },
 });
 

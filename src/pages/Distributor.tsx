@@ -173,6 +173,12 @@ export default function Distributor() {
       toast("Price must be a valid positive number.");
       return;
     }
+    // Add confirmation step
+    const retailerName =
+      (retailers || []).find((r) => String(r._id) === retailerId)?.name || "selected retailer";
+    if (!window.confirm(`Are you sure you want to transfer this batch to ${retailerName}? This cannot be undone.`)) {
+      return;
+    }
     try {
       await transferToRetailer({
         batchId: batch.batchId,
@@ -180,7 +186,7 @@ export default function Distributor() {
         price: priceNum,
         notes: transferNotes || undefined,
       });
-      toast("Transferred to retailer.");
+      toast("Transferred to retailer (awaiting acceptance).");
       setQueryId(batch.batchId);
       setRetailerId("");
       setTransferPrice("");
