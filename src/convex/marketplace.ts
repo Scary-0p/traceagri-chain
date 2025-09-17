@@ -431,9 +431,8 @@ export const acceptBid = mutation({
 export const getPriceInsightsForCrop = query({
   args: { cropVariety: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    // Narrow the optional arg to a definite string for index usage
-    const cropVariety = args.cropVariety;
-    if (!cropVariety) {
+    // If not provided, return a safe default (prevents crashes if someone calls with {})
+    if (!args.cropVariety) {
       return {
         cropVariety: "",
         averageAcceptedPrice: null,
@@ -445,6 +444,10 @@ export const getPriceInsightsForCrop = query({
       };
     }
 
+    // Narrow for TypeScript
+    const cropVariety: string = args.cropVariety as string;
+
+    // Get all listings for this cropVariety using the index
     const listings = await ctx.db
       .query("listings")
       .withIndex("by_crop_variety", (q) => q.eq("cropVariety", cropVariety))
