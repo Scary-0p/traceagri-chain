@@ -431,8 +431,9 @@ export const acceptBid = mutation({
 export const getPriceInsightsForCrop = query({
   args: { cropVariety: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    // If cropVariety isn't provided, return a safe default
-    if (!args.cropVariety) {
+    // Narrow the optional arg to a definite string for index usage
+    const cropVariety = args.cropVariety;
+    if (!cropVariety) {
       return {
         cropVariety: "",
         averageAcceptedPrice: null,
@@ -443,9 +444,6 @@ export const getPriceInsightsForCrop = query({
         dealsThisWeek: 0,
       };
     }
-
-    // Narrow the type for TS after the guard
-    const cropVariety: string = args.cropVariety as string;
 
     const listings = await ctx.db
       .query("listings")
@@ -502,7 +500,7 @@ export const getPriceInsightsForCrop = query({
     );
 
     return {
-      cropVariety: args.cropVariety,
+      cropVariety,
       averageAcceptedPrice: avg,
       minAcceptedPriceThisWeek: minWeek,
       maxAcceptedPriceThisWeek: maxWeek,
