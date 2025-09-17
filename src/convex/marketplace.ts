@@ -124,14 +124,18 @@ export const getMyListings = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    if (!identity.email) throw new Error("No email associated with this account");
+    // Gracefully handle anonymous/guest users with no email
+    if (!identity || !identity.email) {
+      return [];
+    }
 
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email as string))
       .unique();
-    if (!user) throw new Error("User not found");
+    if (!user) {
+      return [];
+    }
 
     const listings = await ctx.db
       .query("listings")
@@ -242,14 +246,18 @@ export const getMyBids = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    if (!identity.email) throw new Error("No email associated with this account");
+    // Gracefully handle anonymous/guest users with no email
+    if (!identity || !identity.email) {
+      return [];
+    }
 
     const user = await ctx.db
       .query("users")
       .withIndex("email", (q) => q.eq("email", identity.email as string))
       .unique();
-    if (!user) throw new Error("User not found");
+    if (!user) {
+      return [];
+    }
 
     const bids = await ctx.db
       .query("bids")
