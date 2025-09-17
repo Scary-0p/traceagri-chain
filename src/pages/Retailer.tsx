@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -39,6 +39,82 @@ export default function Retailer() {
     // Only allow edit if current user owns the batch (already transferred to retailer)
     return String(batch.currentOwnerId) === String(user._id);
   }, [user, batch]);
+
+  // QR scanner state and refs
+  const [scannerOpen, setScannerOpen] = useState<boolean>(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  const parseBatchId = (raw: string): string | null => {
+    try {
+      const url = new URL(raw);
+      const parts = url.pathname.split("/").filter(Boolean);
+      const idx = parts.findIndex((p) => p === "trace");
+      if (idx >= 0 && parts[idx + 1]) return parts[idx + 1];
+    } catch {
+      if (raw.startsWith("BATCH_")) return raw;
+    }
+    return null;
+  };
+
+  const startScanner = async () => {
+    if (!(window as any).BarcodeDetector) {
+      toast("QR scanning not supported. Enter code manually.");
+      return;
+    }
+    setScannerOpen(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      const detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
+      const scan = async () => {
+        if (!videoRef.current) return;
+        try {
+          const results = await detector.detect(videoRef.current);
+          if (results && results.length > 0) {
+            const rawValue = results[0].rawValue as string;
+            const id = parseBatchId(rawValue);
+            if (id) {
+              stopScanner();
+              setEnteredId(id);
+              setQueryId(id);
+              return;
+            }
+          }
+        } catch {}
+        rafRef.current = requestAnimationFrame(scan);
+      };
+      rafRef.current = requestAnimationFrame(scan);
+    } catch (e) {
+      console.error(e);
+      toast("Unable to access camera.");
+      stopScanner();
+    }
+  };
+
+  const stopScanner = () => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setScannerOpen(false);
+  };
+
+  useEffect(() => {
+    return () => stopScanner();
+  }, []);
 
   // Retailer update form state
   const [status, setStatus] = useState<string>("with_retailer");
@@ -151,10 +227,27 @@ export default function Retailer() {
                       placeholder="BATCH_..."
                       value={enteredId}
                       onChange={(e) => setEnteredId(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleFetch(); }}
                     />
                     <Button onClick={handleFetch}>Fetch</Button>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={startScanner}>Scan QR Code</Button>
+                  <p className="text-xs text-muted-foreground">
+                    Tip: If scanning isn't supported, enter the code manually.
+                  </p>
+                </div>
+                {scannerOpen && (
+                  <div className="space-y-2">
+                    <div className="aspect-video w-full bg-black/80 rounded overflow-hidden">
+                      <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button variant="outline" onClick={stopScanner}>Close</Button>
+                    </div>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Tip: Ask your distributor to transfer ownership to you to enable editing.
                 </p>
@@ -264,7 +357,7 @@ export default function Retailer() {
                       <div className="text-sm font-medium mb-2">Update Retailer Info</div>
                       {!canEdit ? (
                         <p className="text-xs text-muted-foreground">
-                          You cannot update this batch because you’re not the current owner.
+                          You cannot update this batch because you're not the current owner.
                           Ask the distributor to transfer it to you.
                         </p>
                       ) : (
