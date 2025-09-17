@@ -252,7 +252,7 @@ export default function Distributor() {
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={startScanner}>Scan QR Code</Button>
-                  <p className="text-xs text-muted-foreground">Tip: If scanning isn’t supported, enter the code.</p>
+                  <p className="text-xs text-muted-foreground">Tip: If scanning isn't supported, enter the code.</p>
                 </div>
                 {scannerOpen && (
                   <div className="space-y-2">
@@ -454,6 +454,43 @@ export default function Distributor() {
                           <div className="md:col-span-2">
                             <Button onClick={handleTransfer}>Submit Transfer</Button>
                           </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Transfer History */}
+                    <div className="pt-4 mt-2 border-t">
+                      <div className="text-sm font-medium mb-2">Transfer History</div>
+                      {!batch.transactions || batch.transactions.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No transfer records available.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {batch.transactions
+                            .sort((a, b) => a.timestamp - b.timestamp)
+                            .map((tx) => (
+                              <div key={String(tx._id)} className="rounded-md border p-3">
+                                <div className="text-xs text-muted-foreground">
+                                  {new Date(tx.timestamp).toLocaleString()}
+                                </div>
+                                <div className="mt-1 text-sm">
+                                  <span className="font-medium">
+                                    {tx.fromUser?.name || "Unknown"} ({tx.fromUser?.role || "N/A"})
+                                  </span>
+                                  {" "}→{" "}
+                                  <span className="font-medium">
+                                    {tx.toUser?.name || "Unknown"} ({tx.toUser?.role || "N/A"})
+                                  </span>
+                                </div>
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {tx.transactionType === "creation" ? "Creation" : "Transfer/Update"}
+                                  {typeof tx.price === "number" ? ` • Price: ${tx.price.toFixed(2)}` : ""}
+                                  {tx.notes ? ` • Notes: ${tx.notes}` : ""}
+                                </div>
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {tx.previousStatus ? `Status: ${String(tx.previousStatus).replace(/_/g, " ")} → ${String(tx.newStatus).replace(/_/g, " ")}` : `Status: ${String(tx.newStatus).replace(/_/g, " ")}`}
+                                </div>
+                              </div>
+                            ))}
                         </div>
                       )}
                     </div>

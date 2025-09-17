@@ -31,8 +31,15 @@ export default function Dashboard() {
   const [farmLocation, setFarmLocation] = useState<string>(""); // initialize empty, sync from user below
   const [notes, setNotes] = useState<string>("");
 
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [selectedHistoryBatchId, setSelectedHistoryBatchId] = useState<string | null>(null);
+
   const createBatch = useMutation(api.batches.createBatch);
   const myBatches = useQuery(api.batches.getUserBatches, {}) ?? [];
+  const selectedHistory = useQuery(
+    api.batches.getBatchById,
+    selectedHistoryBatchId ? { batchId: selectedHistoryBatchId } : (undefined as any),
+  );
 
   useEffect(() => {
     if (user?.location && !farmLocation) {
@@ -417,6 +424,7 @@ export default function Dashboard() {
                           <th className="py-2 pr-4">Status</th>
                           <th className="py-2 pr-4">Submitted</th>
                           <th className="py-2 pr-4">QR</th>
+                          <th className="py-2 pr-4">History</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -433,6 +441,18 @@ export default function Dashboard() {
                                 window.open(`https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(b.qrCode)}`, "_blank");
                               }}>
                                 View QR
+                              </Button>
+                            </td>
+                            <td className="py-2 pr-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedHistoryBatchId(b.batchId);
+                                  setHistoryOpen(true);
+                                }}
+                              >
+                                View
                               </Button>
                             </td>
                           </tr>
@@ -505,6 +525,58 @@ export default function Dashboard() {
               )}
             </CardContent>
           </Card>
+
+          <Dialog open={historyOpen} onOpenChange={(o) => {
+            setHistoryOpen(o);
+            if (!o) setSelectedHistoryBatchId(null);
+          }}>
+            <DialogContent className="sm:max-w-[640px]">
+              <DialogHeader>
+                <DialogTitle>Transfer History</DialogTitle>
+              </DialogHeader>
+              <div className="max-h-[60vh] overflow-auto pr-1 space-y-3">
+                {!selectedHistory ? (
+                  <p className="text-sm text-muted-foreground">Loading history...</p>
+                ) : !selectedHistory.transactions || selectedHistory.transactions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No transfer records available.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedHistory.transactions
+                      .sort((a, b) => a.timestamp - b.timestamp)
+                      .map((tx) => (
+                        <div key={String(tx._id)} className="rounded-md border p-3">
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(tx.timestamp).toLocaleString()}
+                          </div>
+                          <div className="mt-1 text-sm">
+                            <span className="font-medium">
+                              {tx.fromUser?.name || "Unknown"} ({tx.fromUser?.role || "N/A"})
+                            </span>
+                            {" "}→{" "}
+                            <span className="font-medium">
+                              {tx.toUser?.name || "Unknown"} ({tx.toUser?.role || "N/A"})
+                            </span>
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {tx.transactionType === "creation" ? "Creation" : "Transfer/Update"}
+                            {typeof tx.price === "number" ? ` • Price: ${tx.price.toFixed(2)}` : ""}
+                            {tx.notes ? ` • Notes: ${tx.notes}` : ""}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {tx.previousStatus ? `Status: ${String(tx.previousStatus).replace(/_/g, " ")} → ${String(tx.newStatus).replace(/_/g, " ")}` : `Status: ${String(tx.newStatus).replace(/_/g, " ")}`}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setHistoryOpen(false); setSelectedHistoryBatchId(null); }}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </motion.div>
       </main>
     </div>
