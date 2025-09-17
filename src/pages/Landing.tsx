@@ -73,7 +73,18 @@ export default function Landing() {
                 Back
               </Button>
               {isAuthenticated ? (
-                <Button onClick={() => navigate("/dashboard")}>
+                <Button
+                  onClick={() => {
+                    const role =
+                      (user as any)?.role ||
+                      localStorage.getItem("preferredRole") ||
+                      "farmer";
+                    if (role === "distributor") navigate("/distributor-dashboard");
+                    else if (role === "retailer") navigate("/retailer");
+                    else if (role === "consumer") navigate("/trace");
+                    else navigate("/dashboard");
+                  }}
+                >
                   Go to Dashboard
                 </Button>
               ) : (
@@ -141,9 +152,31 @@ export default function Landing() {
                 <div className="font-semibold">Farmer</div>
                 <Button
                   className="w-full"
-                  onClick={() => navigate(isAuthenticated ? "/dashboard" : "/auth")}
+                  onClick={() => {
+                    localStorage.setItem("preferredRole", "farmer");
+                    navigate(isAuthenticated ? "/dashboard" : "/auth?role=farmer");
+                  }}
                 >
                   Go to Farmer
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-md transition-all">
+              <CardContent className="p-4 flex flex-col items-center gap-3">
+                <Truck className="h-6 w-6" />
+                <div className="font-semibold">Distributor</div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    localStorage.setItem("preferredRole", "distributor");
+                    navigate(
+                      isAuthenticated ? "/distributor-dashboard" : "/auth?role=distributor",
+                    );
+                  }}
+                >
+                  Go to Distributor
                 </Button>
               </CardContent>
             </Card>
@@ -155,7 +188,10 @@ export default function Landing() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => navigate("/retailer")}
+                  onClick={() => {
+                    localStorage.setItem("preferredRole", "retailer");
+                    navigate("/retailer");
+                  }}
                 >
                   Go to Retailer
                 </Button>
@@ -169,7 +205,10 @@ export default function Landing() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => navigate("/trace")}
+                  onClick={() => {
+                    localStorage.setItem("preferredRole", "consumer");
+                    navigate("/trace");
+                  }}
                 >
                   Start Tracing
                 </Button>
@@ -216,10 +255,23 @@ export default function Landing() {
                     <p className="text-sm text-muted-foreground mb-4">
                       {stakeholder.description}
                     </p>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full"
-                      onClick={() => navigate("/auth")}
+                      onClick={() => {
+                        localStorage.setItem("preferredRole", stakeholder.role);
+                        if (stakeholder.role === "consumer") {
+                          navigate("/trace");
+                          return;
+                        }
+                        if (isAuthenticated) {
+                          if (stakeholder.role === "distributor") navigate("/distributor-dashboard");
+                          else if (stakeholder.role === "retailer") navigate("/retailer");
+                          else navigate("/dashboard");
+                        } else {
+                          navigate(`/auth?role=${stakeholder.role}`);
+                        }
+                      }}
                     >
                       Access Portal
                     </Button>
