@@ -45,6 +45,7 @@ export default function Marketplace() {
   // Listing Details modal state
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedListingForDetails, setSelectedListingForDetails] = useState<Id<"listings"> | null>(null);
+  const [showInlineBidForm, setShowInlineBidForm] = useState(false);
 
   // Queries and mutations
   const openListings = useQuery(api.marketplace.listOpenListings, { 
@@ -673,7 +674,19 @@ export default function Marketplace() {
       </main>
 
       {/* Listing Details Modal */}
-      <Dialog open={detailsOpen} onOpenChange={(o) => { setDetailsOpen(o); if (!o) setSelectedListingForDetails(null); }}>
+      <Dialog open={detailsOpen} onOpenChange={(o) => { 
+        setDetailsOpen(o); 
+        if (!o) { 
+          setSelectedListingForDetails(null); 
+          setShowInlineBidForm(false); 
+          setPricePerUnit("");
+          setMinQuantity("");
+          setMaxQuantity("");
+          setPickupProposal("");
+          setPaymentTerms("");
+          setComments("");
+        }
+      }}>
         <DialogContent className="sm:max-w-[760px]">
           <DialogHeader>
             <DialogTitle>Listing Details</DialogTitle>
@@ -777,82 +790,98 @@ export default function Marketplace() {
 
               <Separator />
 
-              {/* Inline bid form for distributors */}
+              {/* Inline bid entry control for distributors */}
               {role === "distributor" && listingDetails.listing.status === "open" && (
-                <div className="space-y-3">
-                  <div className="text-sm font-medium">Place a Bid</div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <Label>Price per Unit *</Label>
-                      <Input
-                        className="mt-1"
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={pricePerUnit}
-                        onChange={(e) => setPricePerUnit(e.target.value)}
-                        placeholder="e.g., 4.00"
-                      />
+                <>
+                  {!showInlineBidForm ? (
+                    <div className="flex justify-end">
+                      <Button onClick={() => setShowInlineBidForm(true)}>Make Bid</Button>
                     </div>
-                    <div>
-                      <Label>Min Quantity</Label>
-                      <Input
-                        className="mt-1"
-                        type="number"
-                        min={0}
-                        value={minQuantity}
-                        onChange={(e) => setMinQuantity(e.target.value)}
-                        placeholder="Optional"
-                      />
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="text-sm font-medium">Place a Bid</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <Label>Price per Unit *</Label>
+                          <Input
+                            className="mt-1"
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={pricePerUnit}
+                            onChange={(e) => setPricePerUnit(e.target.value)}
+                            placeholder="e.g., 4.00"
+                          />
+                        </div>
+                        <div>
+                          <Label>Min Quantity</Label>
+                          <Input
+                            className="mt-1"
+                            type="number"
+                            min={0}
+                            value={minQuantity}
+                            onChange={(e) => setMinQuantity(e.target.value)}
+                            placeholder="Optional"
+                          />
+                        </div>
+                        <div>
+                          <Label>Max Quantity</Label>
+                          <Input
+                            className="mt-1"
+                            type="number"
+                            min={0}
+                            value={maxQuantity}
+                            onChange={(e) => setMaxQuantity(e.target.value)}
+                            placeholder="Optional"
+                          />
+                        </div>
+                        <div>
+                          <Label>Pickup Proposal</Label>
+                          <Input
+                            className="mt-1"
+                            value={pickupProposal}
+                            onChange={(e) => setPickupProposal(e.target.value)}
+                            placeholder="e.g., Within 3 days, own transport"
+                          />
+                        </div>
+                        <div>
+                          <Label>Payment Terms</Label>
+                          <Input
+                            className="mt-1"
+                            value={paymentTerms}
+                            onChange={(e) => setPaymentTerms(e.target.value)}
+                            placeholder="e.g., Net 30, Cash on delivery"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label>Comments</Label>
+                          <Textarea
+                            className="mt-1"
+                            value={comments}
+                            onChange={(e) => setComments(e.target.value)}
+                            placeholder="Additional notes or requirements..."
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => { 
+                          setShowInlineBidForm(false); 
+                          setPricePerUnit("");
+                          setMinQuantity("");
+                          setMaxQuantity("");
+                          setPickupProposal("");
+                          setPaymentTerms("");
+                          setComments("");
+                        }}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handlePlaceBidInline}>
+                          Submit Bid
+                        </Button>
+                      </div>
                     </div>
-                    <div>
-                      <Label>Max Quantity</Label>
-                      <Input
-                        className="mt-1"
-                        type="number"
-                        min={0}
-                        value={maxQuantity}
-                        onChange={(e) => setMaxQuantity(e.target.value)}
-                        placeholder="Optional"
-                      />
-                    </div>
-                    <div>
-                      <Label>Pickup Proposal</Label>
-                      <Input
-                        className="mt-1"
-                        value={pickupProposal}
-                        onChange={(e) => setPickupProposal(e.target.value)}
-                        placeholder="e.g., Within 3 days, own transport"
-                      />
-                    </div>
-                    <div>
-                      <Label>Payment Terms</Label>
-                      <Input
-                        className="mt-1"
-                        value={paymentTerms}
-                        onChange={(e) => setPaymentTerms(e.target.value)}
-                        placeholder="e.g., Net 30, Cash on delivery"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label>Comments</Label>
-                      <Textarea
-                        className="mt-1"
-                        value={comments}
-                        onChange={(e) => setComments(e.target.value)}
-                        placeholder="Additional notes or requirements..."
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => { setDetailsOpen(false); setSelectedListingForDetails(null); }}>
-                      Close
-                    </Button>
-                    <Button onClick={handlePlaceBidInline}>
-                      Submit Bid
-                    </Button>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
 
               {/* Close button for non-distributor or closed listing */}
