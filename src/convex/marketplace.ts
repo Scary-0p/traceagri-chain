@@ -41,11 +41,12 @@ export const createListing = mutation({
       throw new Error("You can only list your own batches");
     }
 
-    // Check for existing open listing for this batch
+    // Check for existing open listing for this batch (use composite index, no filters)
     const existingListing = await ctx.db
       .query("listings")
-      .withIndex("by_batch", (q) => q.eq("batchId", args.batchId))
-      .filter((q) => q.eq(q.field("status"), "open"))
+      .withIndex("by_batch_and_status", (q) =>
+        q.eq("batchId", args.batchId).eq("status", "open"),
+      )
       .first();
     if (existingListing) {
       throw new Error("This batch already has an open listing");
@@ -89,31 +90,37 @@ export const listOpenListings = query({
     cropVariety: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const listings = await ctx.db
-      .query("listings")
-      .withIndex("by_status", (q) => q.eq("status", "open"))
-      .collect();
-
-    // Client-side filter for crop variety if provided
-    const filteredListings = args.cropVariety
-      ? listings.filter((listing) => 
-          listing.cropVariety.toLowerCase().includes(args.cropVariety!.toLowerCase())
+    let listings;
+    if (args.cropVariety) {
+      // Use composite index for crop + status to avoid filtering
+      listings = await ctx.db
+        .query("listings")
+        .withIndex("by_crop_variety_and_status", (q) =>
+          q.eq("cropVariety", args.cropVariety as string).eq("status", "open"),
         )
-      : listings;
+        .collect();
+    } else {
+      listings = await ctx.db
+        .query("listings")
+        .withIndex("by_status", (q) => q.eq("status", "open"))
+        .collect();
+    }
 
     // Enrich with farmer details
     const enrichedListings = await Promise.all(
-      filteredListings.map(async (listing) => {
+      listings.map(async (listing) => {
         const farmer = await ctx.db.get(listing.farmerId);
         return {
           ...listing,
-          farmer: farmer ? {
-            name: farmer.name,
-            farmName: farmer.farmName,
-            location: farmer.location,
-          } : null,
+          farmer: farmer
+            ? {
+                name: farmer.name,
+                farmName: farmer.farmName,
+                location: farmer.location,
+              }
+            : null,
         };
-      })
+      }),
     );
 
     return enrichedListings.sort((a, b) => b._creationTime - a._creationTime);
