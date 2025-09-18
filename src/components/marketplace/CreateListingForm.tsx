@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Package } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 type Props = {
   role: string;
@@ -15,6 +16,8 @@ type Props = {
   setUnit: (v: string) => void;
   expectedPrice: string;
   setExpectedPrice: (v: string) => void;
+  negotiationAllowed: boolean;
+  setNegotiationAllowed: (v: boolean) => void;
   specialTerms: string;
   setSpecialTerms: (v: string) => void;
   description: string;
@@ -32,6 +35,8 @@ export default function CreateListingForm({
   setUnit,
   expectedPrice,
   setExpectedPrice,
+  negotiationAllowed,
+  setNegotiationAllowed,
   specialTerms,
   setSpecialTerms,
   description,
@@ -96,6 +101,18 @@ export default function CreateListingForm({
                 value={expectedPrice}
                 onChange={(e) => setExpectedPrice(e.target.value)}
                 placeholder="e.g., 3.50"
+              />
+            </div>
+            <div className="flex items-center justify-between md:col-span-2 border rounded-md px-3 py-2">
+              <div>
+                <Label className="block">Allow Negotiation</Label>
+                <p className="text-xs text-muted-foreground">
+                  Let distributors propose counter offers.
+                </p>
+              </div>
+              <Switch
+                checked={negotiationAllowed}
+                onCheckedChange={setNegotiationAllowed}
               />
             </div>
             <div className="md:col-span-2">

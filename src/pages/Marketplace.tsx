@@ -180,6 +180,8 @@ export default function Marketplace() {
                 setUnit={setUnit}
                 expectedPrice={expectedPrice}
                 setExpectedPrice={setExpectedPrice}
+                negotiationAllowed={negotiationAllowed}
+                setNegotiationAllowed={setNegotiationAllowed}
                 specialTerms={specialTerms}
                 setSpecialTerms={setSpecialTerms}
                 description={description}
