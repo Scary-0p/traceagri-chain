@@ -16,6 +16,9 @@ import { toast } from "sonner";
 import { Package, Truck, Store, DollarSign, MapPin, Calendar } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { Separator } from "@/components/ui/separator";
+import ListingDetailsModal from "@/components/marketplace/ListingDetailsModal";
+import PlaceBidDialog from "@/components/marketplace/PlaceBidDialog";
+import PriceInsightsDialog from "@/components/marketplace/PriceInsightsDialog";
 
 export default function Marketplace() {
   const { isLoading, isAuthenticated, user } = useAuth();
@@ -674,394 +677,35 @@ export default function Marketplace() {
       </main>
 
       {/* Listing Details Modal */}
-      <Dialog open={detailsOpen} onOpenChange={(o) => { 
-        setDetailsOpen(o); 
-        if (!o) { 
-          setSelectedListingForDetails(null); 
-          setShowInlineBidForm(false); 
-          setPricePerUnit("");
-          setMinQuantity("");
-          setMaxQuantity("");
-          setPickupProposal("");
-          setPaymentTerms("");
-          setComments("");
-        }
-      }}>
-        <DialogContent className="sm:max-w-[760px]">
-          <DialogHeader>
-            <DialogTitle>Listing Details</DialogTitle>
-          </DialogHeader>
-
-          {!selectedListingForDetails || !listingDetails ? (
-            <div className="text-sm text-muted-foreground">Loading...</div>
-          ) : (
-            <div className="space-y-4">
-              {/* Top: Listing summary */}
-              <Card>
-                <CardContent className="p-4 space-y-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="text-lg font-semibold">{listingDetails.listing.cropVariety}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {listingDetails.listing.quantity} {listingDetails.listing.unit} • Ask:{" "}
-                        {listingDetails.listing.expectedPrice.toFixed(2)} per {listingDetails.listing.unit}
-                      </div>
-                    </div>
-                    <div>{getStatusBadge(listingDetails.listing.status)}</div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Store className="h-4 w-4 text-muted-foreground" />
-                      <span>{listingDetails.farmer?.name || "Farmer"}</span>
-                    </div>
-                    {listingDetails.farmer?.location && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span>{listingDetails.farmer.location}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {listingDetails.listing.description && (
-                    <p className="text-sm text-muted-foreground">{listingDetails.listing.description}</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Bids thread */}
-              <div>
-                <div className="text-sm font-medium mb-2">Bids</div>
-                {listingDetails.bids.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No bids yet.</div>
-                ) : (
-                  <div className="space-y-3 max-h-72 overflow-auto pr-2">
-                    {listingDetails.bids.map((bid: any) => {
-                      const isMine = user && bid.distributor?.email === user.email;
-                      return (
-                        <div
-                          key={String(bid._id)}
-                          className={`rounded-md border p-3 text-sm ${isMine ? "border-blue-300 bg-blue-50/50" : ""}`}
-                        >
-                          <div className="flex justify-between">
-                            <div className="space-y-1">
-                              <div className="font-medium">
-                                {bid.distributor?.name || "Distributor"} • {bid.pricePerUnit.toFixed(2)} per unit
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {bid.minQuantity ? `Min: ${bid.minQuantity} • ` : ""}
-                                {bid.maxQuantity ? `Max: ${bid.maxQuantity} • ` : ""}
-                                {bid.pickupProposal ? `Pickup: ${bid.pickupProposal} • ` : ""}
-                                {bid.paymentTerms ? `Terms: ${bid.paymentTerms} • ` : ""}
-                                {new Date(bid.timestamp).toLocaleString()}
-                              </div>
-                              {bid.comments && (
-                                <div className="text-xs italic text-muted-foreground">"{"{bid.comments}"}</div>
-                              )}
-                            </div>
-                            <div className="text-right">
-                              {getStatusBadge(bid.status)}
-                              {role === "farmer" && listingDetails.listing.status === "open" && bid.status === "pending" && (
-                                <div className="mt-2">
-                                  <Button
-                                    size="sm"
-                                    onClick={async () => {
-                                      try {
-                                        await acceptBid({ listingId: listingDetails.listing._id, bidId: bid._id });
-                                        toast("Bid accepted! Order confirmed.");
-                                      } catch (e) {
-                                        console.error(e);
-                                        toast("Failed to accept bid. Please try again.");
-                                      }
-                                    }}
-                                  >
-                                    Accept Bid
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <Separator />
-
-              {/* Inline bid entry control for distributors */}
-              {role === "distributor" && listingDetails.listing.status === "open" && (
-                <>
-                  {!showInlineBidForm ? (
-                    <div className="flex justify-end">
-                      <Button onClick={() => setShowInlineBidForm(true)}>Make Bid</Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="text-sm font-medium">Place a Bid</div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <Label>Price per Unit *</Label>
-                          <Input
-                            className="mt-1"
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={pricePerUnit}
-                            onChange={(e) => setPricePerUnit(e.target.value)}
-                            placeholder="e.g., 4.00"
-                          />
-                        </div>
-                        <div>
-                          <Label>Min Quantity</Label>
-                          <Input
-                            className="mt-1"
-                            type="number"
-                            min={0}
-                            value={minQuantity}
-                            onChange={(e) => setMinQuantity(e.target.value)}
-                            placeholder="Optional"
-                          />
-                        </div>
-                        <div>
-                          <Label>Max Quantity</Label>
-                          <Input
-                            className="mt-1"
-                            type="number"
-                            min={0}
-                            value={maxQuantity}
-                            onChange={(e) => setMaxQuantity(e.target.value)}
-                            placeholder="Optional"
-                          />
-                        </div>
-                        <div>
-                          <Label>Pickup Proposal</Label>
-                          <Input
-                            className="mt-1"
-                            value={pickupProposal}
-                            onChange={(e) => setPickupProposal(e.target.value)}
-                            placeholder="e.g., Within 3 days, own transport"
-                          />
-                        </div>
-                        <div>
-                          <Label>Payment Terms</Label>
-                          <Input
-                            className="mt-1"
-                            value={paymentTerms}
-                            onChange={(e) => setPaymentTerms(e.target.value)}
-                            placeholder="e.g., Net 30, Cash on delivery"
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <Label>Comments</Label>
-                          <Textarea
-                            className="mt-1"
-                            value={comments}
-                            onChange={(e) => setComments(e.target.value)}
-                            placeholder="Additional notes or requirements..."
-                          />
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => { 
-                          setShowInlineBidForm(false); 
-                          setPricePerUnit("");
-                          setMinQuantity("");
-                          setMaxQuantity("");
-                          setPickupProposal("");
-                          setPaymentTerms("");
-                          setComments("");
-                        }}>
-                          Cancel
-                        </Button>
-                        <Button onClick={handlePlaceBidInline}>
-                          Submit Bid
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Close button for non-distributor or closed listing */}
-              {(role !== "distributor" || listingDetails.listing.status !== "open") && (
-                <div className="flex justify-end">
-                  <Button variant="outline" onClick={() => { setDetailsOpen(false); setSelectedListingForDetails(null); }}>
-                    Close
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ListingDetailsModal
+        open={detailsOpen}
+        onOpenChange={(o) => {
+          setDetailsOpen(o);
+          if (!o) {
+            setSelectedListingForDetails(null);
+          }
+        }}
+        listingId={selectedListingForDetails}
+        role={role}
+        userEmail={user.email}
+      />
 
       {/* Bid Dialog */}
-      <Dialog open={bidDialogOpen} onOpenChange={setBidDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Place Bid</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div>
-              <Label>Price per Unit *</Label>
-              <Input
-                className="mt-1"
-                type="number"
-                min={0}
-                step="0.01"
-                value={pricePerUnit}
-                onChange={(e) => setPricePerUnit(e.target.value)}
-                placeholder="e.g., 4.00"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Min Quantity</Label>
-                <Input
-                  className="mt-1"
-                  type="number"
-                  min={0}
-                  value={minQuantity}
-                  onChange={(e) => setMinQuantity(e.target.value)}
-                  placeholder="Optional"
-                />
-              </div>
-              <div>
-                <Label>Max Quantity</Label>
-                <Input
-                  className="mt-1"
-                  type="number"
-                  min={0}
-                  value={maxQuantity}
-                  onChange={(e) => setMaxQuantity(e.target.value)}
-                  placeholder="Optional"
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Pickup Proposal</Label>
-              <Input
-                className="mt-1"
-                value={pickupProposal}
-                onChange={(e) => setPickupProposal(e.target.value)}
-                placeholder="e.g., Within 3 days, own transport"
-              />
-            </div>
-            <div>
-              <Label>Payment Terms</Label>
-              <Input
-                className="mt-1"
-                value={paymentTerms}
-                onChange={(e) => setPaymentTerms(e.target.value)}
-                placeholder="e.g., Net 30, Cash on delivery"
-              />
-            </div>
-            <div>
-              <Label>Comments</Label>
-              <Textarea
-                className="mt-1"
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                placeholder="Additional notes or requirements..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBidDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handlePlaceBid}>
-              Place Bid
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PlaceBidDialog
+        open={bidDialogOpen}
+        onOpenChange={setBidDialogOpen}
+        listingId={selectedListingId}
+      />
 
       {/* Insights Dialog */}
-      <Dialog open={insightsOpen} onOpenChange={(o) => { setInsightsOpen(o); if (!o) setInsightsCrop(null); }}>
-        <DialogContent className="sm:max-w-[560px]">
-          <DialogHeader>
-            <DialogTitle>
-              {insightsCrop ? `Price Insights • ${insightsCrop}` : "Price Insights"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {!insightsCrop || !priceInsights ? (
-              <div className="text-sm text-muted-foreground">Loading...</div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Card>
-                    <CardContent className="p-3">
-                      <div className="text-xs text-muted-foreground">Average Accepted</div>
-                      <div className="text-lg font-semibold">
-                        {priceInsights.averageAcceptedPrice != null
-                          ? priceInsights.averageAcceptedPrice.toFixed(2)
-                          : "—"}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-3">
-                      <div className="text-xs text-muted-foreground">Min (7d)</div>
-                      <div className="text-lg font-semibold">
-                        {priceInsights.minAcceptedPriceThisWeek != null
-                          ? priceInsights.minAcceptedPriceThisWeek.toFixed(2)
-                          : "—"}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-3">
-                      <div className="text-xs text-muted-foreground">Max (7d)</div>
-                      <div className="text-lg font-semibold">
-                        {priceInsights.maxAcceptedPriceThisWeek != null
-                          ? priceInsights.maxAcceptedPriceThisWeek.toFixed(2)
-                          : "—"}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div>
-                  <div className="text-sm font-medium mb-2">Recent Accepted Deals</div>
-                  {priceInsights.recentAccepted.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">No recent accepted deals.</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {priceInsights.recentAccepted.map((r: any) => (
-                        <div key={String(r.listingId)} className="rounded-md border p-3 text-sm">
-                          <div className="flex justify-between">
-                            <div>
-                              <div className="font-medium">{r.cropVariety}</div>
-                              <div className="text-muted-foreground text-xs">
-                                {r.quantity} {r.unit} • {r.farmerName || "Farmer"} → {r.distributorName || "Distributor"}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-semibold">{typeof r.finalPrice === "number" ? r.finalPrice.toFixed(2) : "—"}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {r.acceptedAt ? new Date(r.acceptedAt).toLocaleDateString() : ""}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setInsightsOpen(false); setInsightsCrop(null); }}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PriceInsightsDialog
+        open={insightsOpen}
+        onOpenChange={(o) => {
+          setInsightsOpen(o);
+          if (!o) setInsightsCrop(null);
+        }}
+        cropVariety={insightsCrop}
+      />
     </div>
   );
 }
