@@ -19,6 +19,9 @@ import { Separator } from "@/components/ui/separator";
 import ListingDetailsModal from "@/components/marketplace/ListingDetailsModal";
 import PlaceBidDialog from "@/components/marketplace/PlaceBidDialog";
 import PriceInsightsDialog from "@/components/marketplace/PriceInsightsDialog";
+import BrowseListings from "@/components/marketplace/BrowseListings";
+import CreateListingForm from "@/components/marketplace/CreateListingForm";
+import MyOrdersBids from "@/components/marketplace/MyOrdersBids";
 
 export default function Marketplace() {
   const { isLoading, isAuthenticated, user } = useAuth();
@@ -293,384 +296,57 @@ export default function Marketplace() {
 
             {/* Browse Produce Tab */}
             <TabsContent value="browse" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    Available Produce
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-4">
-                    <div className="flex-1">
-                      <Label>Filter by Crop Variety</Label>
-                      <Input
-                        className="mt-1"
-                        placeholder="e.g., Rice, Tomato, Wheat..."
-                        value={cropFilter}
-                        onChange={(e) => setCropFilter(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {!openListings || openListings.length === 0 ? (
-                      <div className="col-span-full text-center py-8 text-muted-foreground">
-                        No open listings available.
-                      </div>
-                    ) : (
-                      openListings.map((listing) => (
-                        <Card
-                          key={listing._id}
-                          className="hover:shadow-md transition-shadow cursor-pointer"
-                          onClick={() => {
-                            setSelectedListingForDetails(listing._id);
-                            setDetailsOpen(true);
-                          }}
-                        >
-                          <CardContent className="p-4 space-y-3">
-                            <div className="flex justify-between items-start">
-                              <h3 className="font-medium">{listing.cropVariety}</h3>
-                              {getStatusBadge(listing.status)}
-                            </div>
-                            
-                            <div className="space-y-2 text-sm">
-                              <div className="flex items-center gap-2">
-                                <Package className="h-4 w-4 text-muted-foreground" />
-                                <span>{listing.quantity} {listing.unit}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                <span>{listing.expectedPrice.toFixed(2)} per {listing.unit}</span>
-                              </div>
-                              {listing.farmer && (
-                                <div className="flex items-center gap-2">
-                                  <Store className="h-4 w-4 text-muted-foreground" />
-                                  <span>{listing.farmer.name}</span>
-                                </div>
-                              )}
-                              {listing.location && (
-                                <div className="flex items-center gap-2">
-                                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                                  <span>{listing.location}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {listing.description && (
-                              <p className="text-xs text-muted-foreground">
-                                {listing.description}
-                              </p>
-                            )}
-
-                            {role === "distributor" && (
-                              <Button
-                                className="w-full"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedListingId(listing._id);
-                                  setBidDialogOpen(true);
-                                }}
-                              >
-                                Place Bid
-                              </Button>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <BrowseListings
+                role={role}
+                openListings={openListings}
+                cropFilter={cropFilter}
+                setCropFilter={setCropFilter}
+                onOpenDetails={(id) => {
+                  setSelectedListingForDetails(id);
+                  setDetailsOpen(true);
+                }}
+                onOpenBidDialog={(id) => {
+                  setSelectedListingId(id);
+                  setBidDialogOpen(true);
+                }}
+              />
             </TabsContent>
 
             {/* List Produce Tab */}
             <TabsContent value="list" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    Create New Listing
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {role !== "farmer" ? (
-                    <p className="text-sm text-muted-foreground">
-                      Only farmers can create listings. Please switch to a farmer account.
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Batch ID *</Label>
-                        <Input
-                          className="mt-1"
-                          placeholder="BATCH_..."
-                          value={batchId}
-                          onChange={(e) => setBatchId(e.target.value)}
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Create batch in Dashboard first, then enter its ID here.
-                        </p>
-                      </div>
-                      <div>
-                        <Label>Quantity *</Label>
-                        <Input
-                          className="mt-1"
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={quantity}
-                          onChange={(e) => setQuantity(e.target.value)}
-                          placeholder="e.g., 500"
-                        />
-                      </div>
-                      <div>
-                        <Label>Unit</Label>
-                        <Input
-                          className="mt-1"
-                          value={unit}
-                          onChange={(e) => setUnit(e.target.value)}
-                          placeholder="kg, quintal, liter"
-                        />
-                      </div>
-                      <div>
-                        <Label>Expected Price (per unit) *</Label>
-                        <Input
-                          className="mt-1"
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={expectedPrice}
-                          onChange={(e) => setExpectedPrice(e.target.value)}
-                          placeholder="e.g., 3.50"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label>Special Terms</Label>
-                        <Input
-                          className="mt-1"
-                          value={specialTerms}
-                          onChange={(e) => setSpecialTerms(e.target.value)}
-                          placeholder="Payment terms, delivery requirements, etc."
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label>Description</Label>
-                        <Textarea
-                          className="mt-1"
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
-                          placeholder="Additional details about the produce..."
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Button onClick={handleCreateListing}>
-                          Create Listing
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <CreateListingForm
+                role={role}
+                batchId={batchId}
+                setBatchId={setBatchId}
+                quantity={quantity}
+                setQuantity={setQuantity}
+                unit={unit}
+                setUnit={setUnit}
+                expectedPrice={expectedPrice}
+                setExpectedPrice={setExpectedPrice}
+                specialTerms={specialTerms}
+                setSpecialTerms={setSpecialTerms}
+                description={description}
+                setDescription={setDescription}
+                onCreateListing={handleCreateListing}
+              />
             </TabsContent>
 
             {/* My Orders/Bids Tab */}
             <TabsContent value="orders" className="space-y-6">
-              {role === "farmer" ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>My Listings</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Active Listings */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-sm font-medium">Active Listings</h3>
-                        <span className="text-xs text-muted-foreground">{farmerActiveListings.length} item(s)</span>
-                      </div>
-                      {farmerActiveListings.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                          No active listings. Create your first listing.
-                        </p>
-                      ) : (
-                        <div className="space-y-4">
-                          {farmerActiveListings.map((listing) => (
-                            <Card key={listing._id} className="border-l-4 border-l-primary">
-                              <CardContent className="p-4">
-                                <div className="flex justify-between items-start mb-3">
-                                  <div>
-                                    <h3 className="font-medium">{listing.cropVariety}</h3>
-                                    <p className="text-sm text-muted-foreground">
-                                      {listing.quantity} {listing.unit} at {listing.expectedPrice.toFixed(2)} per unit
-                                    </p>
-                                  </div>
-                                  {getStatusBadge(listing.status)}
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      setInsightsCrop(listing.cropVariety);
-                                      setInsightsOpen(true);
-                                    }}
-                                  >
-                                    Check Price
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedListingForDetails(listing._id);
-                                      setDetailsOpen(true);
-                                    }}
-                                  >
-                                    View Details
-                                  </Button>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <Separator />
-
-                    {/* History (Sold/Locked) */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-sm font-medium">History (Sold / Locked)</h3>
-                        <span className="text-xs text-muted-foreground">{farmerHistoryListings.length} item(s)</span>
-                      </div>
-                      {farmerHistoryListings.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No past orders yet.</p>
-                      ) : (
-                        <div className="space-y-4">
-                          {farmerHistoryListings
-                            .sort((a, b) => (b.acceptedAt ?? 0) - (a.acceptedAt ?? 0))
-                            .map((listing) => (
-                              <Card key={listing._id} className="border-l-4 border-l-green-500">
-                                <CardContent className="p-4">
-                                  <div className="flex justify-between items-start mb-3">
-                                    <div>
-                                      <h3 className="font-medium">{listing.cropVariety}</h3>
-                                      <p className="text-sm text-muted-foreground">
-                                        {listing.quantity} {listing.unit} •{" "}
-                                        {listing.acceptedBid
-                                          ? `Sold at ${listing.finalPrice?.toFixed(2)} per unit`
-                                          : "Locked"}
-                                        {listing.acceptedAt
-                                          ? ` • ${new Date(listing.acceptedAt).toLocaleDateString()}`
-                                          : ""}
-                                      </p>
-                                    </div>
-                                    {getStatusBadge(listing.status)}
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setInsightsCrop(listing.cropVariety);
-                                        setInsightsOpen(true);
-                                      }}
-                                    >
-                                      Check Price
-                                    </Button>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>My Bids</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Active Bids */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-sm font-medium">Active Bids</h3>
-                        <span className="text-xs text-muted-foreground">{distributorActiveBids.length} item(s)</span>
-                      </div>
-                      {distributorActiveBids.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                          No active bids. Browse produce to place a bid.
-                        </p>
-                      ) : (
-                        <div className="space-y-4">
-                          {distributorActiveBids.map((bid) => (
-                            <Card key={bid._id} className="border-l-4 border-l-blue-500">
-                              <CardContent className="p-4">
-                                <div className="flex justify-between items-start mb-3">
-                                  <div>
-                                    <h3 className="font-medium">
-                                      {bid.listing?.cropVariety || "Unknown Crop"}
-                                    </h3>
-                                    <p className="text-sm text-muted-foreground">
-                                      Bid: {bid.pricePerUnit.toFixed(2)} per unit
-                                      {bid.listing?.farmer && ` • Farmer: ${bid.listing.farmer.name}`}
-                                      {bid.status === "pending" ? " • Pending Farmer Response" : ""}
-                                    </p>
-                                  </div>
-                                  {getStatusBadge(bid.status)}
-                                </div>
-                                {bid.comments && (
-                                  <p className="text-sm text-muted-foreground">"{bid.comments}"</p>
-                                )}
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <Separator />
-
-                    {/* History */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-sm font-medium">History</h3>
-                        <span className="text-xs text-muted-foreground">{distributorHistoryBids.length} item(s)</span>
-                      </div>
-                      {distributorHistoryBids.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No past bids yet.</p>
-                      ) : (
-                        <div className="space-y-4">
-                          {distributorHistoryBids
-                            .sort((a, b) => b.timestamp - a.timestamp)
-                            .map((bid) => (
-                              <Card key={bid._id} className="border-l-4 border-l-green-600">
-                                <CardContent className="p-4">
-                                  <div className="flex justify-between items-start mb-3">
-                                    <div>
-                                      <h3 className="font-medium">
-                                        {bid.listing?.cropVariety || "Unknown Crop"}
-                                      </h3>
-                                      <p className="text-sm text-muted-foreground">
-                                        Bid: {bid.pricePerUnit.toFixed(2)} per unit
-                                        {bid.listing?.farmer && ` • Farmer: ${bid.listing.farmer.name}`}
-                                      </p>
-                                    </div>
-                                    {getStatusBadge(bid.status)}
-                                  </div>
-                                  {bid.comments && (
-                                    <p className="text-sm text-muted-foreground">"{bid.comments}"</p>
-                                  )}
-                                </CardContent>
-                              </Card>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              <MyOrdersBids
+                role={role}
+                myListings={myListings}
+                myBids={myBids}
+                onCheckPrice={(crop) => {
+                  setInsightsCrop(crop);
+                  setInsightsOpen(true);
+                }}
+                onViewDetails={(id) => {
+                  setSelectedListingForDetails(id);
+                  setDetailsOpen(true);
+                }}
+              />
             </TabsContent>
           </Tabs>
         </motion.div>
