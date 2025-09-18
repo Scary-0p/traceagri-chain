@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -48,13 +48,7 @@ export default function Marketplace() {
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [insightsCrop, setInsightsCrop] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      navigate("/auth");
-    }
-  }, [isLoading, isAuthenticated, navigate]);
-
-  if (isLoading || !user) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -62,7 +56,7 @@ export default function Marketplace() {
     );
   }
 
-  const role = user.role ?? "farmer";
+  const role = user?.role ?? "guest";
 
   const handleCreateListing = async () => {
     if (!batchId || !quantity || !expectedPrice) {
@@ -225,7 +219,7 @@ export default function Marketplace() {
         }}
         listingId={selectedListingForDetails}
         role={role}
-        userEmail={user.email}
+        userEmail={user?.email ?? null}
       />
 
       {/* Bid Dialog */}
