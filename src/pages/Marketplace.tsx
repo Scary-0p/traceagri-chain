@@ -1,11 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
@@ -13,9 +7,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Package, Truck, Store, DollarSign, MapPin, Calendar } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
-import { Separator } from "@/components/ui/separator";
 import ListingDetailsModal from "@/components/marketplace/ListingDetailsModal";
 import PlaceBidDialog from "@/components/marketplace/PlaceBidDialog";
 import PriceInsightsDialog from "@/components/marketplace/PriceInsightsDialog";
@@ -40,18 +32,9 @@ export default function Marketplace() {
   const [specialTerms, setSpecialTerms] = useState<string>("");
   const [description, setDescription] = useState<string>("");
 
-  // Bid form state
-  const [pricePerUnit, setPricePerUnit] = useState<string>("");
-  const [minQuantity, setMinQuantity] = useState<string>("");
-  const [maxQuantity, setMaxQuantity] = useState<string>("");
-  const [pickupProposal, setPickupProposal] = useState<string>("");
-  const [paymentTerms, setPaymentTerms] = useState<string>("");
-  const [comments, setComments] = useState<string>("");
-
   // Listing Details modal state
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedListingForDetails, setSelectedListingForDetails] = useState<Id<"listings"> | null>(null);
-  const [showInlineBidForm, setShowInlineBidForm] = useState(false);
 
   // Queries and mutations
   const openListings = useQuery(api.marketplace.listOpenListings, { 
@@ -59,24 +42,11 @@ export default function Marketplace() {
   });
   const myListings = useQuery(api.marketplace.getMyListings, {});
   const myBids = useQuery(api.marketplace.getMyBids, {});
-
   const createListing = useMutation(api.marketplace.createListing);
-  const placeBid = useMutation(api.marketplace.placeBid);
-  const acceptBid = useMutation(api.marketplace.acceptBid);
 
   // New: price insights dialog state
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [insightsCrop, setInsightsCrop] = useState<string | null>(null);
-
-  const listingDetails = useQuery(
-    api.marketplace.getListingDetails,
-    selectedListingForDetails ? { listingId: selectedListingForDetails } : "skip"
-  );
-
-  const priceInsights = useQuery(
-    api.marketplace.getPriceInsightsForCrop,
-    insightsCrop ? { cropVariety: insightsCrop } : "skip"
-  );
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -130,114 +100,6 @@ export default function Marketplace() {
     } catch (e) {
       console.error(e);
       toast("Failed to create listing. Please try again.");
-    }
-  };
-
-  const handlePlaceBid = async () => {
-    if (!selectedListingId || !pricePerUnit) {
-      toast("Please fill required fields.");
-      return;
-    }
-
-    const price = Number(pricePerUnit);
-    const minQty = minQuantity ? Number(minQuantity) : undefined;
-    const maxQty = maxQuantity ? Number(maxQuantity) : undefined;
-
-    if (Number.isNaN(price) || price <= 0) {
-      toast("Price must be a valid positive number.");
-      return;
-    }
-
-    try {
-      await placeBid({
-        listingId: selectedListingId,
-        pricePerUnit: price,
-        minQuantity: minQty,
-        maxQuantity: maxQty,
-        pickupProposal: pickupProposal || undefined,
-        paymentTerms: paymentTerms || undefined,
-        comments: comments || undefined,
-      });
-      toast("Bid placed successfully!");
-      setBidDialogOpen(false);
-      setPricePerUnit("");
-      setMinQuantity("");
-      setMaxQuantity("");
-      setPickupProposal("");
-      setPaymentTerms("");
-      setComments("");
-    } catch (e) {
-      console.error(e);
-      toast("Failed to place bid. Please try again.");
-    }
-  };
-
-  const handlePlaceBidInline = async () => {
-    if (!selectedListingForDetails || !pricePerUnit) {
-      toast("Please fill required fields.");
-      return;
-    }
-    const price = Number(pricePerUnit);
-    const minQty = minQuantity ? Number(minQuantity) : undefined;
-    const maxQty = maxQuantity ? Number(maxQuantity) : undefined;
-    if (Number.isNaN(price) || price <= 0) {
-      toast("Price must be a valid positive number.");
-      return;
-    }
-    try {
-      await placeBid({
-        listingId: selectedListingForDetails,
-        pricePerUnit: price,
-        minQuantity: minQty,
-        maxQuantity: maxQty,
-        pickupProposal: pickupProposal || undefined,
-        paymentTerms: paymentTerms || undefined,
-        comments: comments || undefined,
-      });
-      toast("Bid placed successfully!");
-      // Clear only bid form state; keep modal open
-      setPricePerUnit("");
-      setMinQuantity("");
-      setMaxQuantity("");
-      setPickupProposal("");
-      setPaymentTerms("");
-      setComments("");
-    } catch (e) {
-      console.error(e);
-      toast("Failed to place bid. Please try again.");
-    }
-  };
-
-  const handleAcceptBid = async (listingId: Id<"listings">, bidId: Id<"bids">) => {
-    if (!window.confirm("Are you sure you want to accept this bid? This will lock in the deal and reject all other bids.")) {
-      return;
-    }
-
-    try {
-      await acceptBid({ listingId, bidId });
-      toast("Bid accepted! Order confirmed.");
-    } catch (e) {
-      console.error(e);
-      toast("Failed to accept bid. Please try again.");
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "open":
-        return <Badge variant="default">Open for Bids</Badge>;
-      case "locked_in":
-        return <Badge variant="secondary">Order Confirmed</Badge>;
-      case "sold":
-        return <Badge variant="outline">Completed</Badge>;
-      case "pending":
-        return <Badge variant="default">Pending</Badge>;
-      case "accepted":
-        return <Badge className="bg-green-100 text-green-800">Accepted</Badge>;
-      case "rejected":
-        return <Badge variant="destructive">Rejected</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
